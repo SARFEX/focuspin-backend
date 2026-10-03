@@ -1,0 +1,17 @@
+{
+  "name": "focuspin-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "focuspin AI backend — OpenAI-совместимый фасад над DeepSeek, отдающий только валидные команды планировщика",
+  "scripts": {
+    "dev": "bun run src/main.ts",
+    "start": "bun run src/main.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "smoke": "bun run scripts/smoke.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "^7.0.2"
+  }
+}
