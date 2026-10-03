@@ -1,5 +1,5 @@
 import type { Config } from '../config.ts';
-import type { Limiter, Identity } from '../limiter/limiter.ts';
+import type { Limiter, IdentityKeys } from '../limiter/limiter.ts';
 import type { Logger } from '../log.ts';
 import type { RuntimeState } from '../state.ts';
 
@@ -28,7 +28,7 @@ export interface PipelineDeps {
 export interface MagicInput {
   /** Ровно два сообщения приложения: [0] system (промпт v4, пинится), [1] user (дата+контекст+запрос). */
   messages: Array<{ role: 'system' | 'user'; content: string }>;
-  identity: Identity;
+  identity: IdentityKeys;
   /** Что прислало приложение в поле model — игнорируется, логируется. */
   requestedModel: string;
 }
