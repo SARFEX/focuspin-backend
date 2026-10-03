@@ -1,0 +1,13 @@
+{
+  "name": "complete by id",
+  "model_output": "{\"commands\":[{\"intent\":\"complete\",\"id\":\"task-7\"}]}",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "complete",
+        "id": "task-7"
+      }
+    ]
+  }
+}

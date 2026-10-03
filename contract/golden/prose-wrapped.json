@@ -1,0 +1,14 @@
+{
+  "name": "json wrapped in prose on both sides",
+  "model_output": "Конечно! Вот команды:\n{\"commands\":[{\"intent\":\"create\",\"title\":\"Полить цветы\"}]}\nЧто-нибудь ещё?",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "create",
+        "title": "Полить цветы",
+        "bucket": "today"
+      }
+    ]
+  }
+}

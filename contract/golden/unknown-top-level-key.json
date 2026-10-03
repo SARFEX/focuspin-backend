@@ -1,0 +1,10 @@
+{
+  "name": "extra top-level key",
+  "model_output": "{\"commands\":[],\"requestId\":\"abc\"}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "unknownTopLevelKey"
+    ]
+  }
+}

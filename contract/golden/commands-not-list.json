@@ -1,0 +1,10 @@
+{
+  "name": "commands is a string",
+  "model_output": "{\"commands\":\"нет команд\"}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "commandsNotList"
+    ]
+  }
+}

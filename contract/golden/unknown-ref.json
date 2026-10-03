@@ -1,0 +1,10 @@
+{
+  "name": "ref not declared by any earlier create",
+  "model_output": "{\"commands\":[{\"intent\":\"complete\",\"ref\":\"ghost\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "unknownRef"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "31 commands exceeds kMagicMaxCommands=30",
+  "model_output": "{\"commands\":[{\"intent\":\"create\",\"title\":\"Задача 1\"},{\"intent\":\"create\",\"title\":\"Задача 2\"},{\"intent\":\"create\",\"title\":\"Задача 3\"},{\"intent\":\"create\",\"title\":\"Задача 4\"},{\"intent\":\"create\",\"title\":\"Задача 5\"},{\"intent\":\"create\",\"title\":\"Задача 6\"},{\"intent\":\"create\",\"title\":\"Задача 7\"},{\"intent\":\"create\",\"title\":\"Задача 8\"},{\"intent\":\"create\",\"title\":\"Задача 9\"},{\"intent\":\"create\",\"title\":\"Задача 10\"},{\"intent\":\"create\",\"title\":\"Задача 11\"},{\"intent\":\"create\",\"title\":\"Задача 12\"},{\"intent\":\"create\",\"title\":\"Задача 13\"},{\"intent\":\"create\",\"title\":\"Задача 14\"},{\"intent\":\"create\",\"title\":\"Задача 15\"},{\"intent\":\"create\",\"title\":\"Задача 16\"},{\"intent\":\"create\",\"title\":\"Задача 17\"},{\"intent\":\"create\",\"title\":\"Задача 18\"},{\"intent\":\"create\",\"title\":\"Задача 19\"},{\"intent\":\"create\",\"title\":\"Задача 20\"},{\"intent\":\"create\",\"title\":\"Задача 21\"},{\"intent\":\"create\",\"title\":\"Задача 22\"},{\"intent\":\"create\",\"title\":\"Задача 23\"},{\"intent\":\"create\",\"title\":\"Задача 24\"},{\"intent\":\"create\",\"title\":\"Задача 25\"},{\"intent\":\"create\",\"title\":\"Задача 26\"},{\"intent\":\"create\",\"title\":\"Задача 27\"},{\"intent\":\"create\",\"title\":\"Задача 28\"},{\"intent\":\"create\",\"title\":\"Задача 29\"},{\"intent\":\"create\",\"title\":\"Задача 30\"},{\"intent\":\"create\",\"title\":\"Задача 31\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "tooManyCommands"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "whitespace-only model output",
+  "model_output": "  \n\t ",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "emptyContent"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "string values and intents are trimmed",
+  "model_output": "{\"commands\":[{\"intent\":\"  complete  \",\"id\":\"  task-3  \"},{\"intent\":\"create\",\"title\":\"\\n  Купить хлеб  \"}]}",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "complete",
+        "id": "task-3"
+      },
+      {
+        "intent": "create",
+        "title": "Купить хлеб",
+        "bucket": "today"
+      }
+    ]
+  }
+}

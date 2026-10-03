@@ -1,0 +1,16 @@
+{
+  "name": "create: all optional fields, order normalized",
+  "model_output": "{\"commands\":[{\"ref\":\"hosting\",\"description\":\"Домен .ru, до 10 числа\",\"bucket\":\"tomorrow\",\"title\":\"Оплатить хостинг\",\"intent\":\"create\"}]}",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "create",
+        "title": "Оплатить хостинг",
+        "bucket": "tomorrow",
+        "description": "Домен .ru, до 10 числа",
+        "ref": "hosting"
+      }
+    ]
+  }
+}

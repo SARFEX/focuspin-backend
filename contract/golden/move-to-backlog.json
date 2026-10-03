@@ -1,0 +1,13 @@
+{
+  "name": "move_to_backlog by titleQuery",
+  "model_output": "{\"commands\":[{\"intent\":\"move_to_backlog\",\"titleQuery\":\"отпуск\"}]}",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "move_to_backlog",
+        "titleQuery": "отпуск"
+      }
+    ]
+  }
+}

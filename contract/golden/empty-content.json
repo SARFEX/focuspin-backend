@@ -1,0 +1,10 @@
+{
+  "name": "empty model output",
+  "model_output": "",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "emptyContent"
+    ]
+  }
+}

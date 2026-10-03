@@ -1,0 +1,12 @@
+{
+  "name": "issues from several commands in order; batch rejected all-or-nothing",
+  "model_output": "{\"commands\":[{\"intent\":\"create\"},{\"intent\":\"create\",\"title\":\"Валидная\"},{\"intent\":\"delete\"},{\"intent\":\"create\",\"title\":\"Ещё\",\"bucket\":\"weekend\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "missingTitle",
+      "missingTarget",
+      "unknownBucket"
+    ]
+  }
+}

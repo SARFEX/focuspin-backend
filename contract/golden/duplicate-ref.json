@@ -1,0 +1,10 @@
+{
+  "name": "two creates with the same ref",
+  "model_output": "{\"commands\":[{\"intent\":\"create\",\"title\":\"Первая\",\"ref\":\"a\"},{\"intent\":\"create\",\"title\":\"Вторая\",\"ref\":\"a\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "duplicateRef"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "title is a number",
+  "model_output": "{\"commands\":[{\"intent\":\"create\",\"title\":123}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "notAString"
+    ]
+  }
+}

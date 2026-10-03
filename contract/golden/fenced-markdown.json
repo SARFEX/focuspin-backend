@@ -1,0 +1,14 @@
+{
+  "name": "json fenced as ```json block",
+  "model_output": "Вот ответ:\n```json\n{\"commands\":[{\"intent\":\"create\",\"title\":\"Забрать посылку\"}]}\n```",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "create",
+        "title": "Забрать посылку",
+        "bucket": "today"
+      }
+    ]
+  }
+}

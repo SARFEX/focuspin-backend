@@ -1,0 +1,10 @@
+{
+  "name": "all candidates decoded but invalid: issues of the first one win",
+  "model_output": "{\"commands\":[{\"intent\":\"nope\",\"id\":\"t1\"}]} затем {\"commands\":5}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "unknownIntent"
+    ]
+  }
+}

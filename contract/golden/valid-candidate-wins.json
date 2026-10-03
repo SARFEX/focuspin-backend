@@ -1,0 +1,8 @@
+{
+  "name": "broken first candidate, valid balanced candidate wins",
+  "model_output": "{\"commands\":[{\"intent\":\"archive\"}]} финальный ответ: {\"commands\":[]}",
+  "expect": {
+    "ok": true,
+    "commands": []
+  }
+}

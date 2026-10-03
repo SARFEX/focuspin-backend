@@ -1,0 +1,10 @@
+{
+  "name": "edit with target but no title/description",
+  "model_output": "{\"commands\":[{\"intent\":\"edit\",\"id\":\"t1\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "missingEditPayload"
+    ]
+  }
+}

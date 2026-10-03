@@ -1,0 +1,10 @@
+{
+  "name": "bucket outside today/tomorrow/backlog",
+  "model_output": "{\"commands\":[{\"intent\":\"create\",\"title\":\"Полить цветы\",\"bucket\":\"someday\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "unknownBucket"
+    ]
+  }
+}

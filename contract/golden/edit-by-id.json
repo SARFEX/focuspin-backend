@@ -1,0 +1,15 @@
+{
+  "name": "edit by id: title and description",
+  "model_output": "{\"commands\":[{\"intent\":\"edit\",\"id\":\"task-12\",\"title\":\"Позвонить маме\",\"description\":\"После работы\"}]}",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "edit",
+        "id": "task-12",
+        "title": "Позвонить маме",
+        "description": "После работы"
+      }
+    ]
+  }
+}

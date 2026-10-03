@@ -1,0 +1,10 @@
+{
+  "name": "prose only, no brackets at all",
+  "model_output": "К сожалению, я не смог разобрать ваш запрос.",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "invalidJson"
+    ]
+  }
+}

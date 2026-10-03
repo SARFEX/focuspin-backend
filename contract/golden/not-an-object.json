@@ -1,0 +1,10 @@
+{
+  "name": "top-level number",
+  "model_output": "42",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "notAnObject"
+    ]
+  }
+}

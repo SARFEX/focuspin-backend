@@ -1,0 +1,10 @@
+{
+  "name": "title empty after trim",
+  "model_output": "{\"commands\":[{\"intent\":\"create\",\"title\":\"   \"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "emptyValue"
+    ]
+  }
+}

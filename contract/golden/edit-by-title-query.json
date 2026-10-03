@@ -1,0 +1,14 @@
+{
+  "name": "edit by titleQuery: description only",
+  "model_output": "{\"commands\":[{\"intent\":\"edit\",\"titleQuery\":\"молоко\",\"description\":\"Два литра\"}]}",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "edit",
+        "titleQuery": "молоко",
+        "description": "Два литра"
+      }
+    ]
+  }
+}

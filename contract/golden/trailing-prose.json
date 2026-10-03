@@ -1,0 +1,13 @@
+{
+  "name": "json followed by trailing prose",
+  "model_output": "{\"commands\":[{\"intent\":\"complete\",\"id\":\"t9\"}]} — готово!",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "complete",
+        "id": "t9"
+      }
+    ]
+  }
+}

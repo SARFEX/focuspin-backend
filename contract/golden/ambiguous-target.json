@@ -1,0 +1,10 @@
+{
+  "name": "delete with two target fields",
+  "model_output": "{\"commands\":[{\"intent\":\"delete\",\"id\":\"t1\",\"titleQuery\":\"Отчёт\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "ambiguousTarget"
+    ]
+  }
+}

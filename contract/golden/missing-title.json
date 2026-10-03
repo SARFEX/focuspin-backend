@@ -1,0 +1,10 @@
+{
+  "name": "create without title",
+  "model_output": "{\"commands\":[{\"intent\":\"create\",\"bucket\":\"today\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "missingTitle"
+    ]
+  }
+}

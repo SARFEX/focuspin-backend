@@ -1,0 +1,8 @@
+{
+  "name": "json fenced as bare ``` block",
+  "model_output": "```\n{\"commands\":[]}\n```",
+  "expect": {
+    "ok": true,
+    "commands": []
+  }
+}

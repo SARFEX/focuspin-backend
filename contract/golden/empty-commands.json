@@ -1,0 +1,8 @@
+{
+  "name": "empty commands list is valid (\"no actions\")",
+  "model_output": "{\"commands\":[]}",
+  "expect": {
+    "ok": true,
+    "commands": []
+  }
+}

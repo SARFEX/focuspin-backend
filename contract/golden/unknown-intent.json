@@ -1,0 +1,10 @@
+{
+  "name": "intent outside the whitelist",
+  "model_output": "{\"commands\":[{\"intent\":\"archive\",\"id\":\"t1\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "unknownIntent"
+    ]
+  }
+}

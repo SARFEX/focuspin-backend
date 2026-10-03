@@ -1,0 +1,10 @@
+{
+  "name": "delete without any target field",
+  "model_output": "{\"commands\":[{\"intent\":\"delete\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "missingTarget"
+    ]
+  }
+}

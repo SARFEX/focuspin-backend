@@ -1,0 +1,31 @@
+{
+  "name": "create x2 with refs, edit and delete by ref",
+  "model_output": "{\"commands\":[\n  {\"intent\":\"create\",\"title\":\"Позвонить маме\",\"ref\":\"call\"},\n  {\"intent\":\"create\",\"title\":\"Купить билеты\",\"bucket\":\"backlog\",\"ref\":\"tickets\"},\n  {\"intent\":\"edit\",\"ref\":\"call\",\"title\":\"Позвонить маме вечером\",\"description\":\"Обсудить отпуск\"},\n  {\"intent\":\"delete\",\"ref\":\"tickets\"}\n]}",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "create",
+        "title": "Позвонить маме",
+        "bucket": "today",
+        "ref": "call"
+      },
+      {
+        "intent": "create",
+        "title": "Купить билеты",
+        "bucket": "backlog",
+        "ref": "tickets"
+      },
+      {
+        "intent": "edit",
+        "ref": "call",
+        "title": "Позвонить маме вечером",
+        "description": "Обсудить отпуск"
+      },
+      {
+        "intent": "delete",
+        "ref": "tickets"
+      }
+    ]
+  }
+}

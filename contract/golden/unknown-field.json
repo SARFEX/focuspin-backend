@@ -1,0 +1,10 @@
+{
+  "name": "field not allowed for intent create",
+  "model_output": "{\"commands\":[{\"intent\":\"create\",\"title\":\"Полить цветы\",\"priority\":\"high\"}]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "unknownField"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "command element is a string, not an object",
+  "model_output": "{\"commands\":[\"создать задачу\"]}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "notAnObject"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "unknown top-level key plus non-list commands, codes in order",
+  "model_output": "{\"meta\":1,\"commands\":5}",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "unknownTopLevelKey",
+      "commandsNotList"
+    ]
+  }
+}

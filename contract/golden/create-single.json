@@ -1,0 +1,14 @@
+{
+  "name": "create: single happy path, bucket defaults to today",
+  "model_output": "{\"commands\":[{\"intent\":\"create\",\"title\":\"Купить молока\"}]}",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "create",
+        "title": "Купить молока",
+        "bucket": "today"
+      }
+    ]
+  }
+}

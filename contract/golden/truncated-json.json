@@ -1,0 +1,10 @@
+{
+  "name": "truncated json without closing brackets",
+  "model_output": "{\"commands\": [{\"intent\":\"create\"",
+  "expect": {
+    "ok": false,
+    "issue_codes": [
+      "invalidJson"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "delete, uncomplete, move_to_tomorrow, move_to_today in one batch",
+  "model_output": "{\"commands\":[{\"intent\":\"delete\",\"id\":\"t1\"},{\"intent\":\"uncomplete\",\"titleQuery\":\"отчёт\"},{\"intent\":\"move_to_tomorrow\",\"id\":\"t2\"},{\"intent\":\"move_to_today\",\"id\":\"t3\"}]}",
+  "expect": {
+    "ok": true,
+    "commands": [
+      {
+        "intent": "delete",
+        "id": "t1"
+      },
+      {
+        "intent": "uncomplete",
+        "titleQuery": "отчёт"
+      },
+      {
+        "intent": "move_to_tomorrow",
+        "id": "t2"
+      },
+      {
+        "intent": "move_to_today",
+        "id": "t3"
+      }
+    ]
+  }
+}
