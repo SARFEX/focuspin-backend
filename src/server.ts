@@ -12,13 +12,14 @@ export function createApp(deps: AppDeps): AppServer {
     port: deps.config.port,
     idleTimeout: 30,
     maxRequestBodySize: deps.config.maxBodyBytes,
-    async fetch(request): Promise<Response> {
+    async fetch(request, server): Promise<Response> {
       const startedAtMs = performance.now();
       const requestId = crypto.randomUUID().slice(0, 8);
       const url = new URL(request.url);
+      const clientIp = server.requestIP(request)?.address ?? '';
       let status = 500;
       try {
-        const response = await dispatch(request, url, deps, { requestId });
+        const response = await dispatch(request, url, deps, { requestId, clientIp });
         status = response.status;
         return response;
       } catch (err) {

@@ -16,4 +16,6 @@ export interface AppDeps {
 
 export interface RequestContext {
   requestId: string;
+  /** Сокетный адрес клиента (server.requestIP). Пустая строка, если не удалось определить. */
+  clientIp: string;
 }
