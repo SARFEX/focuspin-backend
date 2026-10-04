@@ -270,6 +270,8 @@ describe('POST /v1/chat/completions', () => {
         400,
         'invalid_request',
       );
+      // Oversized echo field: a bloated model string must not bloat the response/logs.
+      await expectError(await magicFetch(app, validBody({ model: 'x'.repeat(129) })), 400, 'invalid_request');
     });
   });
 

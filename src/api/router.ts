@@ -159,6 +159,10 @@ async function readAndValidateBody(request: Request, config: Config): Promise<Ma
     throw new HttpError('invalid_request', 'Поле model должно быть строкой.');
   }
   const requestedModel = modelValue === undefined ? '' : modelValue;
+  // Эхо-поле: ограничиваем, чтобы раздутый model не раздувал ответ и логи.
+  if (requestedModel.length > 128) {
+    throw new HttpError('invalid_request', 'Поле model слишком длинное.');
+  }
 
   // Unknown top-level keys are allowed (OpenAI clients send extra fields) and ignored.
   const messages = body['messages'];
