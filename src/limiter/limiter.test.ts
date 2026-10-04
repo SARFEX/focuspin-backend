@@ -215,7 +215,6 @@ describe('Limiter.beginRequest', () => {
     expect(limiter.beginRequest(dev1AtA(), T0).allowed).toBe(true);
     limiter.recordContractFail(dev1AtA(), T0);
     limiter.recordContractFail(dev1AtA(), T0);
-    expect(metric(state, 'contract_fails')).toBe(2);
 
     const denied = limiter.beginRequest(dev1AtA(), T0 + 1000);
     expect(denied.allowed).toBe(false);

@@ -96,7 +96,6 @@ export class Limiter {
       this.store.bumpCounter(CFAIL_SCOPE, keys.idkey, 'hour', windowStartMs(nowMs, 'hour'));
       this.store.bumpDailyContractFails(utcDayString(nowMs));
     })();
-    this.state.inc('contract_fails');
   }
 
   /** Чистка устаревших строк: counters >2 суток, ip_devices >2 суток, devices без активности >90 суток, usage_daily >30 суток. */
