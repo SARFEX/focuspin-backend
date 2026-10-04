@@ -3,12 +3,13 @@
 Контракт-гард бекенда: из сырого текста модели наружу проходит только
 валидный канонический JSON со списком команд планировщика.
 
-**Источник истины — приложение**: `my-focus-tasks/lib/magic_input/task_command.dart`
+**Источник истины — приложение focuspin (приватный репозиторий)**:
+`lib/magic_input/task_command.dart`
 (схема, лимиты, issue-коды, порядок проверок, all-or-nothing) и
-`my-focus-tasks/lib/magic_input/magic_response_parser.dart` (устойчивое
+`lib/magic_input/magic_response_parser.dart` (устойчивое
 извлечение JSON из «сырого» ответа). Зеркало в бекенде:
 `src/contract/commands.ts` + `src/contract/parse.ts`. Системный промпт v4 —
-`my-focus-tasks/lib/magic_input/magic_prompt.dart`, бекенд пинит его копию.
+`lib/magic_input/magic_prompt.dart`, бекенд пинит его копию.
 
 ## Формат ответа модели
 

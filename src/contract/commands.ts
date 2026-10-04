@@ -1,6 +1,6 @@
 /**
- * Schema of magic commands v4 — a 1:1 mirror of the app's
- * my-focus-tasks/lib/magic_input/task_command.dart: same intents, fields,
+ * Schema of magic commands v4 — a 1:1 mirror of the focuspin app's
+ * lib/magic_input/task_command.dart (private repo): same intents, fields,
  * limits, issue codes, check order and all-or-nothing batch semantics.
  * THE SOURCE OF TRUTH IS THE DART FILE. Any change here must land in both
  * repos simultaneously (see contract/schema-v4.md).

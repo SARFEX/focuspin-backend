@@ -1,7 +1,7 @@
 /**
  * CONTRACT GUARD — public API (frozen).
- * Implementation: commands.ts (schema v4, mirror of the app's
- * my-focus-tasks/lib/magic_input/task_command.dart) and parse.ts (resilient
+ * Implementation: commands.ts (schema v4, mirror of the focuspin app's
+ * lib/magic_input/task_command.dart, private repo) and parse.ts (resilient
  * extraction, mirror of magic_response_parser.dart).
  */
 

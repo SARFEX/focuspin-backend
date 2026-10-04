@@ -1,6 +1,7 @@
 /**
- * Resilient JSON extraction from raw model text — a 1:1 mirror of
- * my-focus-tasks/lib/magic_input/magic_response_parser.dart. Never throws:
+ * Resilient JSON extraction from raw model text — a 1:1 mirror of the
+ * focuspin app's lib/magic_input/magic_response_parser.dart (private
+ * repo). Never throws:
  * empty content, prose and truncated JSON all collapse into issues.
  */
 
