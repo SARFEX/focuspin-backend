@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install (frozen)
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Tests
+        run: bun test
+
+      # e2e: поднимает стаб DeepSeek и реальный сервер на 127.0.0.1,
+      # прогоняет 8 сценариев (см. scripts/smoke.ts)
+      - name: Smoke (e2e)
+        run: bun run smoke
