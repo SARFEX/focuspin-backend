@@ -1,8 +1,16 @@
 {
   "name": "focuspin-backend",
   "version": "0.1.0",
-  "private": true,
   "description": "focuspin AI backend — OpenAI-совместимый фасад над DeepSeek, отдающий только валидные команды планировщика",
+  "license": "MIT",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sarfex/focuspin-backend.git"
+  },
+  "engines": {
+    "bun": ">=1.4"
+  },
   "scripts": {
     "dev": "bun run src/main.ts",
     "start": "bun run src/main.ts",
