@@ -61,6 +61,10 @@ function jitterSeconds(): number {
  *   global_day (запросы и токены) -> ip_minute -> ip_hour -> ip_day -> subnet_day
  *   -> device_minute -> device_hour -> device_day (fresh-устройства — пониженный лимит)
  *   -> ip_devices (ротация id с одного IP) -> contract_fails (антиабьюз битых ответов).
+ * Отказ на ip-подсети/минуте/часе/дне происходит ДО счётчиков устройства — сосед по NAT
+ * не сжигает чужую квоту. Исключение — ip_devices: ярус сознательно стоит после
+ * device-счётчиков, ротируемый id теряет квоту вместе с отказом (ротация не должна
+ * становиться бесплатной), а урон соседним устройствам за NAT пренебрежим (1 из дневной квоты).
  */
 export class Limiter {
   private readonly store: LimiterStore;
