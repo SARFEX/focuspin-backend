@@ -1,0 +1,22 @@
+# Пример Caddy 2 для focuspin-backend. Скопируйте в /etc/caddy/Caddyfile,
+# замените домен и перезапустите: caddy reload --config /etc/caddy/Caddyfile.
+# Caddy сам получает и продлевает TLS-сертификат (ACME/Let's Encrypt).
+#
+# ВАЖНО: Caddy автоматически добавляет X-Forwarded-For, поэтому на бекенде
+# ОБЯЗАН быть TRUST_PROXY=true (иначе лимиты привяжутся к IP самого прокси).
+# Доверять прокси можно только если 8080 не опубликован наружу
+# (в docker-compose он слушает 127.0.0.1:8080).
+
+api.focuspin.app {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	reverse_proxy focuspin-backend:8080
+}

@@ -1,0 +1,40 @@
+# /etc/systemd/system/focuspin-backend.service
+# Юнит для VPS без Docker. Предусловия:
+#   - bun установлен системно: cp ~/.bun/bin/bun /usr/local/bin/bun
+#   - код лежит в /opt/focuspin-backend (git clone или rsync, владелец focuspin)
+#   - конфиг: /etc/focuspin-backend.env (chmod 600, root:root), минимум:
+#       APP_ENV=production
+#       PORT=8080
+#       HMAC_SECRET=<openssl rand -hex 32>
+#       DEEPSEEK_API_KEY=<ключ DeepSeek>
+#       DATABASE_PATH=/var/lib/focuspin-backend/focuspin.db
+#       TRUST_PROXY=true   # только если за своим Caddy/Nginx
+#       DEEPSEEK_BASE_URL=https://api.deepseek.com
+#
+# systemctl daemon-reload && systemctl enable --now focuspin-backend
+
+[Unit]
+Description=focuspin AI backend (OpenAI-совместимый фасад над DeepSeek)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=focuspin
+Group=focuspin
+WorkingDirectory=/opt/focuspin-backend
+EnvironmentFile=/etc/focuspin-backend.env
+ExecStart=/usr/local/bin/bun run src/main.ts
+Restart=always
+RestartSec=3
+
+# Hardening: минимум привилегий, ФС почти вся read-only.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/focuspin-backend
+# StateDirectory создаёт /var/lib/focuspin-backend с владельцем focuspin автоматически.
+StateDirectory=focuspin-backend
+
+[Install]
+WantedBy=multi-user.target
