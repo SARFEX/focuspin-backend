@@ -1,5 +1,7 @@
 # focuspin AI — бекенд
 
+[![CI](https://github.com/sarfex/focuspin-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/sarfex/focuspin-backend/actions/workflows/ci.yml)
+
 OpenAI-chat-completions-совместимый фасад над DeepSeek для мобильного
 приложения focuspin. Приложение присылает свой «магический» запрос обычным
 языком, бекенд возвращает **только** валидный канонический JSON команд
@@ -139,6 +141,21 @@ bun run scripts/load.ts --url http://127.0.0.1:8080 --duration-sec 30 --rps 20
 - [contract/api.md](contract/api.md) — HTTP-контракт и примеры.
 - [ops/DEPLOY.md](ops/DEPLOY.md) — полный гайд по деплою (VPS, Caddy,
   Cloudflare Tunnel, Docker), харденинг и ранбуэйк при абьюзе.
+- [SECURITY.md](SECURITY.md) — как приватно репортить уязвимости.
+
+## Contributing
+
+PR принимаются: тесты (`bun test`), typecheck (`bun x tsc --noEmit`) и
+e2e-смоук (`bun run smoke`) обязаны быть зелёными — их же гоняет CI.
+Инварианты репозитория (ноль runtime-зависимостей, HMAC-only хранение,
+зеркало контракта с приложением) — в [AGENTS.md](AGENTS.md); изменения
+схемы команд и пин промпта синхронны с приватным репозиторием приложения,
+такие PR без синхронной пары не смёржатся. Коммиты — атомарные, один
+логический смысл на коммит.
+
+## License
+
+MIT — см. [LICENSE](LICENSE).
 
 ## Roadmap
 
