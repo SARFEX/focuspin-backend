@@ -23,7 +23,7 @@
 
 ```bash
 bun run dev          # сервер на :8080
-bun test             # 189 тестов — держать зелёными
+bun test             # весь сьют — держать зелёными
 bun x tsc --noEmit   # typecheck (tsconfig включает src, scripts, contract)
 bun run smoke        # e2e самопроверка: стаб :8901 + сервер :8911
 ```

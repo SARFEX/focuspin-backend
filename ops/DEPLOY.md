@@ -165,6 +165,8 @@ docker compose --project-directory . -f ops/docker-compose.yml --profile caddy u
 - [ ] `unattended-upgrades` включён.
 - [ ] `/etc/focuspin-backend.env` или `.env` — chmod 600, вне git (`.gitignore` уже исключает).
 - [ ] Логи и БД по дизайну не содержат сырых device id и IP — только HMAC-хеши; не «улучшайте» это.
+- [ ] `/metrics` и `/healthz` без авторизации — держите их доступными только с localhost
+      (дефолт compose/systemd это уже обеспечивает; открывать наружу смысла нет).
 
 ## Ёмкость и производительность
 
