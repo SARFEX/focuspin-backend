@@ -147,10 +147,14 @@ ingress:
 
 ```bash
 cp .env.example .env && nano .env
+mkdir -p data && sudo chown 1000:1000 data   # uid пользователя bun в образе
 docker compose --project-directory . -f ops/docker-compose.yml up -d --build
 # с TLS-прокси:
 docker compose --project-directory . -f ops/docker-compose.yml --profile caddy up -d --build
 ```
+
+Без `chown` Docker создаст `./data` от root, и контейнер под пользователем
+`bun` не сможет открыть базу (краш-луп с ошибкой SQLite).
 
 ## Чеклист харденинга
 

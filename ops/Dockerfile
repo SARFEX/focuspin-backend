@@ -8,8 +8,12 @@ COPY src ./src
 
 # Dev-зависимости (typescript, @types/bun) ставим ДО NODE_ENV=production:
 # bun при NODE_ENV=production пропустил бы их. Рантайму они не мешают,
-# а CI может запускать typecheck прямо в контейнере.
+# а tsc доступен для отладки прямо в контейнере.
 RUN bun install --frozen-lockfile
+
+# Каталог БД принадлежит bun: именованный том при первом монтировании
+# наследует владельца образца из образа (bind-маунт см. ops/docker-compose.yml).
+RUN mkdir -p /data && chown bun:bun /data
 
 ENV NODE_ENV=production
 USER bun
