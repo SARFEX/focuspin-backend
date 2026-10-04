@@ -55,6 +55,22 @@ function readInt(env: Record<string, string | undefined>, name: string, fallback
   return Math.floor(value);
 }
 
+/**
+ * Целое без дефолта: все лимиты и глобальные предохранители оператор задаёт
+ * явно — фактические пороги деплоя не должны быть публичной константой кода.
+ */
+function readRequiredInt(env: Record<string, string | undefined>, name: string): number {
+  const raw = env[name];
+  if (raw === undefined || raw.trim() === '') {
+    throw new Error(`Config: ${name} is required (no default) — set it in the environment`);
+  }
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`Config: ${name} must be a positive number, got "${raw}"`);
+  }
+  return Math.floor(value);
+}
+
 function readBool(env: Record<string, string | undefined>, name: string, fallback: boolean): boolean {
   const raw = env[name];
   if (raw === undefined || raw.trim() === '') return fallback;
@@ -103,21 +119,21 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     maxBodyBytes: readInt(env, 'MAX_BODY_BYTES', 65_536),
     maxSystemChars: readInt(env, 'MAX_SYSTEM_CHARS', 8_000),
     maxUserChars: readInt(env, 'MAX_USER_CHARS', 48_000),
-    globalMaxInflight: readInt(env, 'GLOBAL_MAX_INFLIGHT', 8),
-    globalDailyRequestCap: readInt(env, 'GLOBAL_DAILY_REQUEST_CAP', 20_000),
-    globalDailyTokenCap: readInt(env, 'GLOBAL_DAILY_TOKEN_CAP', 25_000_000),
+    globalMaxInflight: readRequiredInt(env, 'GLOBAL_MAX_INFLIGHT'),
+    globalDailyRequestCap: readRequiredInt(env, 'GLOBAL_DAILY_REQUEST_CAP'),
+    globalDailyTokenCap: readRequiredInt(env, 'GLOBAL_DAILY_TOKEN_CAP'),
     limits: {
-      ipMinute: readInt(env, 'LIMIT_IP_MINUTE', 15),
-      ipHour: readInt(env, 'LIMIT_IP_HOUR', 60),
-      ipDay: readInt(env, 'LIMIT_IP_DAY', 300),
-      subnetDay: readInt(env, 'LIMIT_SUBNET_DAY', 1_200),
-      ipDistinctDevicesDay: readInt(env, 'LIMIT_IP_DISTINCT_DEVICES_DAY', 6),
-      deviceMinute: readInt(env, 'LIMIT_DEVICE_MINUTE', 6),
-      deviceHour: readInt(env, 'LIMIT_DEVICE_HOUR', 15),
-      deviceDay: readInt(env, 'LIMIT_DEVICE_DAY', 50),
-      freshDeviceHours: readInt(env, 'LIMIT_FRESH_DEVICE_HOURS', 24),
-      freshDeviceDay: readInt(env, 'LIMIT_FRESH_DEVICE_DAY', 15),
-      contractFailsPerHour: readInt(env, 'LIMIT_CONTRACT_FAILS_PER_HOUR', 10),
+      ipMinute: readRequiredInt(env, 'LIMIT_IP_MINUTE'),
+      ipHour: readRequiredInt(env, 'LIMIT_IP_HOUR'),
+      ipDay: readRequiredInt(env, 'LIMIT_IP_DAY'),
+      subnetDay: readRequiredInt(env, 'LIMIT_SUBNET_DAY'),
+      ipDistinctDevicesDay: readRequiredInt(env, 'LIMIT_IP_DISTINCT_DEVICES_DAY'),
+      deviceMinute: readRequiredInt(env, 'LIMIT_DEVICE_MINUTE'),
+      deviceHour: readRequiredInt(env, 'LIMIT_DEVICE_HOUR'),
+      deviceDay: readRequiredInt(env, 'LIMIT_DEVICE_DAY'),
+      freshDeviceHours: readRequiredInt(env, 'LIMIT_FRESH_DEVICE_HOURS'),
+      freshDeviceDay: readRequiredInt(env, 'LIMIT_FRESH_DEVICE_DAY'),
+      contractFailsPerHour: readRequiredInt(env, 'LIMIT_CONTRACT_FAILS_PER_HOUR'),
     },
   };
 }

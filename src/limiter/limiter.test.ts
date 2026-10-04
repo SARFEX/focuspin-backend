@@ -13,6 +13,7 @@ const T0 = Date.UTC(2026, 9, 4, 12, 0, 0);
 
 const BASE_ENV: Record<string, string> = {
   APP_ENV: 'test',
+  GLOBAL_MAX_INFLIGHT: '8',
   GLOBAL_DAILY_REQUEST_CAP: '1000000',
   GLOBAL_DAILY_TOKEN_CAP: '1000000000',
   LIMIT_IP_MINUTE: '1000',

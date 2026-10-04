@@ -10,6 +10,21 @@ const BASE_ENV: Record<string, string> = {
   DEEPSEEK_MODEL: 'test-model',
   UPSTREAM_TIMEOUT_MS: '5000',
   REQUEST_BUDGET_MS: '10000',
+  // Клиент лимитов не касается, но loadConfig требует их явно (дефолтов нет).
+  GLOBAL_MAX_INFLIGHT: '8',
+  GLOBAL_DAILY_REQUEST_CAP: '1000000',
+  GLOBAL_DAILY_TOKEN_CAP: '1000000000',
+  LIMIT_IP_MINUTE: '1000',
+  LIMIT_IP_HOUR: '1000',
+  LIMIT_IP_DAY: '1000',
+  LIMIT_SUBNET_DAY: '1000',
+  LIMIT_IP_DISTINCT_DEVICES_DAY: '100',
+  LIMIT_DEVICE_MINUTE: '1000',
+  LIMIT_DEVICE_HOUR: '1000',
+  LIMIT_DEVICE_DAY: '1000',
+  LIMIT_FRESH_DEVICE_HOURS: '24',
+  LIMIT_FRESH_DEVICE_DAY: '1000',
+  LIMIT_CONTRACT_FAILS_PER_HOUR: '1000',
 };
 
 function makeClient(overrides: Record<string, string> = {}): DeepSeekClient {
