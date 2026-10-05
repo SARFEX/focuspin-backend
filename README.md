@@ -1,6 +1,6 @@
 # focuspin AI — бекенд
 
-[![CI](https://github.com/sarfex/focuspin-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/sarfex/focuspin-backend/actions/workflows/ci.yml)
+[![CI](https://github.com/SARFEX/focuspin-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/SARFEX/focuspin-backend/actions/workflows/ci.yml)
 
 OpenAI-chat-completions-совместимый фасад над DeepSeek для мобильного
 приложения focuspin. Приложение присылает свой «магический» запрос обычным
