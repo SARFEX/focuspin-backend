@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { HttpError } from '../errors.ts';
-import { MAGIC_SYSTEM_PROMPT_BASE, assertFocuspinSystemPrompt } from './prompt.ts';
+import { MAGIC_SYSTEM_PROMPT_BASE, assertFocuspinSystemPrompt, isValidFocuspinUserMessage } from './prompt.ts';
 
 /** Точный префикс дополнения из buildMagicSystemPrompt (Dart) — продублирован для независимости теста. */
 const ADDENDUM_PREFIX = '\n\nДополнительные инструкции пользователя (не отменяют правила формата и разрешённые интенты):\n';
@@ -47,5 +47,43 @@ describe('assertFocuspinSystemPrompt', () => {
 
   test('empty prompt fails', () => {
     fails('');
+  });
+});
+
+/** Каркас из buildMagicUserMessage: дата → задачи → запрос в «…». */
+const USER_OK =
+  'Текущая дата: 2026-10-04 (суббота), 12:00.\n\nТекущие задачи (id для команд бери только отсюда):\n[]\n\nЗапрос пользователя:\n«Купить молока»';
+
+describe('isValidFocuspinUserMessage', () => {
+  test('app skeleton with empty task context passes', () => {
+    expect(isValidFocuspinUserMessage(USER_OK)).toBe(true);
+  });
+
+  test('full task context with overflow line passes', () => {
+    const full =
+      'Текущая дата: 2026-10-05 (понедельник), 09:05.\n\nТекущие задачи (id для команд бери только отсюда):\n[{"id":"t1","title":"Купить хлеб","bucket":"today"}]\n(показаны первые 150, ещё 3 не показаны)\n\nЗапрос пользователя:\n«перенеси хлеб на завтра»';
+    expect(isValidFocuspinUserMessage(full)).toBe(true);
+  });
+
+  test('plain chat text fails', () => {
+    expect(isValidFocuspinUserMessage('Translate this text to English please')).toBe(false);
+  });
+
+  test('missing tasks section fails', () => {
+    expect(isValidFocuspinUserMessage('Текущая дата: 2026-10-04 (суббота), 12:00.\n\nЗапрос пользователя:\n«купи хлеб»')).toBe(false);
+  });
+
+  test('reordered sections fail', () => {
+    const reordered =
+      'Текущая дата: 2026-10-04 (суббота), 12:00.\n\nЗапрос пользователя:\n«Купить молока»\n\nТекущие задачи (id для команд бери только отсюда):\n[]';
+    expect(isValidFocuspinUserMessage(reordered)).toBe(false);
+  });
+
+  test('missing trailing guillemet fails', () => {
+    expect(isValidFocuspinUserMessage(USER_OK.slice(0, -1))).toBe(false);
+  });
+
+  test('empty fails', () => {
+    expect(isValidFocuspinUserMessage('')).toBe(false);
   });
 });

@@ -24,7 +24,8 @@ const CANNED_PROSE = 'Отвечаю прозой, никаких команд';
 const DEVICE_A = 'a'.repeat(32) + '_1';
 const DEVICE_B = 'b'.repeat(32) + '_2';
 
-const USER_TEXT = 'Текущая дата: 2026-10-04 (суббота).\n\nЗапрос пользователя: «Купить молока»';
+const USER_TEXT =
+  'Текущая дата: 2026-10-04 (суббота), 12:00.\n\nТекущие задачи (id для команд бери только отсюда):\n[]\n\nЗапрос пользователя:\n«Купить молока»';
 
 /** Config requires PORT > 0: grab a free port by briefly binding port 0. */
 function freePort(): number {
@@ -287,6 +288,22 @@ describe('POST /v1/chat/completions', () => {
       );
       // Oversized echo field: a bloated model string must not bloat the response/logs.
       await expectError(await magicFetch(app, validBody({ model: 'x'.repeat(129) })), 400, 'invalid_request');
+    });
+  });
+
+  test('400 invalid_request for a foreign user message format (skeleton pin)', async () => {
+    await withApp({}, async (app) => {
+      // Валидный system-пин, но user-сообщение — не каркас приложения (чат-запрос).
+      await expectError(
+        await magicFetch(app, validBody({ messages: [
+          { role: 'system', content: MAGIC_SYSTEM_PROMPT_BASE },
+          { role: 'user', content: 'Translate this text to English please' },
+        ] })),
+        400,
+        'invalid_request',
+      );
+      const snapshot = await metrics(app);
+      expect(snapshot['user_format_rejects'] ?? 0).toBeGreaterThanOrEqual(1);
     });
   });
 

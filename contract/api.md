@@ -22,7 +22,9 @@ Content-Type: application/json
   - `messages` — **ровно два**: `[0]` `system` = системный промпт focuspin
     v4, бекенд пинит его копию; несовпадение → `400 invalid_request`;
     `[1]` `user` = текущие дата/время + контекст задач с id + запрос
-    пользователя (как строит `magic_prompt.dart`);
+    пользователя (как строит `magic_prompt.dart`). Каркас `user`-сообщения
+    закреплён аналогично промпту — строка даты, заголовок списка задач,
+    запрос в «кавычках-ёлочках»; чужая структура → `400 invalid_request`;
   - `temperature` — `0`.
 - Превышение `maxBodyBytes` → `413 payload_too_large`.
 
@@ -44,7 +46,7 @@ Content-Type: application/json
 
 | статус | code | причина |
 |---|---|---|
-| 400 | `invalid_request` | битый JSON/структура тела; `stream:true`; системный промпт не совпал с закреплённым v4 |
+| 400 | `invalid_request` | битый JSON/структура тела; `stream:true`; системный промпт не совпал с закреплённым v4; каркас `user`-сообщения не из приложения |
 | 401 | `unauthorized` | нет/битый заголовок `Authorization` (Bearer + device id не того формата; реестра устройств нет — годен любой корректный id) |
 | 404 | `not_found` | неизвестный путь |
 | 405 | `method_not_allowed` | не-POST на `/v1/chat/completions` |

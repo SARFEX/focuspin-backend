@@ -13,7 +13,7 @@
 - **Ноль runtime-зависимостей.** Только Bun globals и `bun:sqlite`; dev-зависимости — `typescript`, `@types/bun`.
 - **Никаких сырых идентификаторов.** Device id и IP попадают в БД/логи только как HMAC-хеши; содержимое сообщений не логируется.
 - **Порядок пайплайна: пин → валидация → каноническая пересборка.** Сырой текст модели наружу не выходит никогда; `choices[0].message.content` — всегда канонический JSON `{"commands":[...]}`.
-- **Зеркало контракта 1:1 с приложением** (приватный репозиторий focuspin): `contract/schema-v4.md` ↔ `lib/magic_input/task_command.dart` + `magic_response_parser.dart`; `MAGIC_SYSTEM_PROMPT_BASE` (`src/llm/prompt.ts`) ↔ `lib/magic_input/magic_prompt.dart`. Менять только синхронно в обоих репозиториях.
+- **Зеркало контракта 1:1 с приложением** (приватный репозиторий focuspin): `contract/schema-v4.md` ↔ `lib/magic_input/task_command.dart` + `magic_response_parser.dart`; `MAGIC_SYSTEM_PROMPT_BASE` (`src/llm/prompt.ts`) ↔ `lib/magic_input/magic_prompt.dart`; каркас `user`-сообщения (`isValidFocuspinUserMessage`) ↔ `buildMagicUserMessage` того же файла. Менять только синхронно в обоих репозиториях.
 
 ## Зоны
 

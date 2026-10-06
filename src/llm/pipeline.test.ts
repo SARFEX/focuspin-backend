@@ -41,7 +41,6 @@ const IDENTITY: IdentityKeys = { idkey: 'idkey-0123456789abcdef', ipkey: 'ipkey-
 
 const USER_MESSAGE =
   'Текущая дата: 2026-10-04 (суббота), 12:00.\n\nТекущие задачи (id для команд бери только отсюда):\n[]\n\nЗапрос пользователя:\n«Купить молока»';
-
 /** Свежий вход на каждый прогон — тесты не должны зависеть от мутаций друг друга. */
 const makeInput = () => ({
   messages: [
@@ -207,6 +206,27 @@ describe('MagicPipeline', () => {
     const { deps } = makeDeps(upstream, { CORRECTIVE_RETRY: 'false' });
     await runError(new MagicPipeline(deps), 'contract_violation', 5);
     expect(upstream.calls).toBe(1);
+  });
+
+  test('foreign user message skeleton is rejected before any upstream call', async () => {
+    const upstream = fakeUpstream(() => ok(VALID_CONTENT));
+    const { deps, state } = makeDeps(upstream);
+    const input = {
+      ...makeInput(),
+      messages: [
+        { role: 'system' as const, content: MAGIC_SYSTEM_PROMPT_BASE },
+        { role: 'user' as const, content: 'Translate this text to English please' },
+      ],
+    };
+    try {
+      await new MagicPipeline(deps).run(input);
+      throw new Error('expected HttpError invalid_request was not thrown');
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpError);
+      if (error instanceof HttpError) expect(error.code).toBe('invalid_request');
+    }
+    expect(upstream.calls).toBe(0);
+    expect(metric(state, 'user_format_rejects')).toBe(1);
   });
 
   test('breaker opens after repeated upstream failures and rejects without upstream calls', async () => {

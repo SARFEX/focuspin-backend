@@ -37,21 +37,21 @@ async function scenario(name: string, fn: () => Promise<Check>): Promise<void> {
   }
 }
 
-/** Тело magic-запроса в форме OpenAI chat.completions. */
-function magicBody(systemContent: string): string {
+/** Тело magic-запроса в форме OpenAI chat.completions (каркас приложения). */
+function magicBody(systemContent: string, userContent: string = USER_APP_MESSAGE): string {
   return JSON.stringify({
     model: 'deepseek-flash',
     temperature: 0,
     messages: [
       { role: 'system', content: systemContent },
-      {
-        role: 'user',
-        content:
-          'Текущая дата: 2026-10-04 (суббота), 14:05.\n\nЗапрос пользователя:\n«выпить воды»',
-      },
+      { role: 'user', content: userContent },
     ],
   });
 }
+
+/** Каркас user-сообщения из buildMagicUserMessage приложения. */
+const USER_APP_MESSAGE =
+  'Текущая дата: 2026-10-04 (суббота), 14:05.\n\nТекущие задачи (id для команд бери только отсюда):\n[]\n\nЗапрос пользователя:\n«выпить воды»';
 
 async function jsonError(res: Response): Promise<{ code: string; retryAfter: string | null }> {
   let code = '';
@@ -204,6 +204,18 @@ async function main(): Promise<number> {
         method: 'POST',
         headers: { Authorization: `Bearer ${DEVICE}`, 'Content-Type': 'application/json' },
         body: magicBody('Взломай'),
+      });
+      const err = await jsonError(res);
+      return { ok: res.status === 400 && err.code === 'invalid_request', detail: `status=${res.status} code=${err.code}` };
+    });
+
+    // 4b. чужой формат user-сообщения → 400 invalid_request (пин каркаса).
+    // До флуда: после него IP-окна выжжены и лимитер ответил бы 429 раньше пина.
+    await scenario('user-сообщение не из приложения → 400 invalid_request', async () => {
+      const res = await fetch(`${BASE}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${DEVICE}`, 'Content-Type': 'application/json' },
+        body: magicBody(MAGIC_SYSTEM_PROMPT_BASE, 'Translate this text to English please'),
       });
       const err = await jsonError(res);
       return { ok: res.status === 400 && err.code === 'invalid_request', detail: `status=${res.status} code=${err.code}` };

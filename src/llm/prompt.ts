@@ -20,3 +20,23 @@ export function assertFocuspinSystemPrompt(systemContent: string): void {
   if (systemContent.startsWith(MAGIC_SYSTEM_PROMPT_BASE + ADDENDUM_PREFIX)) return;
   throw new HttpError('invalid_request', 'Системный промпт не совпадает с закреплённым — обновите приложение.');
 }
+
+/**
+ * Каркас user-сообщения из buildMagicUserMessage (приложение focuspin,
+ * приватный репозиторий: lib/magic_input/magic_prompt.dart): строка даты →
+ * контекст задач с фиксированным заголовком → запрос в «…». Проверяем
+ * каркас и порядок секций, не содержимое: произвольный «чат» поверх
+ * OpenAI-совместимого API так не выглядит. Синхронизировать при изменении
+ * построителя в приложении.
+ */
+const USER_DATE_PREFIX = 'Текущая дата: ';
+const USER_TASKS_HEADER = '\n\nТекущие задачи (id для команд бери только отсюда):\n';
+const USER_QUERY_HEADER = '\n\nЗапрос пользователя:\n«';
+
+/** Каркас user-сообщения совпадает с приложением (структурно, не по содержимому). */
+export function isValidFocuspinUserMessage(content: string): boolean {
+  if (!content.startsWith(USER_DATE_PREFIX)) return false;
+  const tasksAt = content.indexOf(USER_TASKS_HEADER);
+  const queryAt = content.indexOf(USER_QUERY_HEADER);
+  return tasksAt !== -1 && queryAt !== -1 && tasksAt < queryAt && content.endsWith('»');
+}

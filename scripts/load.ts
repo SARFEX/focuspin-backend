@@ -55,7 +55,7 @@ async function main(): Promise<number> {
     temperature: 0,
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: 'Текущая дата: 2026-10-04, 14:05.\n\nЗапрос пользователя:\n«выпить воды»' },
+      { role: 'user', content: 'Текущая дата: 2026-10-04 (суббота), 14:05.\n\nТекущие задачи (id для команд бери только отсюда):\n[]\n\nЗапрос пользователя:\n«выпить воды»' },
     ],
   });
   const headers = { Authorization: `Bearer ${deviceId(0, args.devices)}`, 'Content-Type': 'application/json' };

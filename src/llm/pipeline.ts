@@ -5,7 +5,7 @@ import type { Limiter, IdentityKeys } from '../limiter/limiter.ts';
 import type { Logger } from '../log.ts';
 import type { RuntimeState } from '../state.ts';
 import { CircuitBreaker } from './breaker.ts';
-import { assertFocuspinSystemPrompt } from './prompt.ts';
+import { assertFocuspinSystemPrompt, isValidFocuspinUserMessage } from './prompt.ts';
 
 export interface UpstreamMessage {
   role: 'system' | 'user' | 'assistant';
@@ -79,6 +79,12 @@ export class MagicPipeline {
       }
       // Сообщения приходят уже shape-проверенными из API-слоя (ровно 2: system, user).
       assertFocuspinSystemPrompt(input.messages[0]?.content ?? '');
+      // Каркас user-сообщения — тоже из приложения: «чат» через OpenAI-совместимый
+      // клиент (переводы/эссе за счёт ключа бэкенда) невозможен по форме запроса.
+      if (!isValidFocuspinUserMessage(input.messages[1]?.content ?? '')) {
+        state.inc('user_format_rejects');
+        throw new HttpError('invalid_request', 'Формат сообщения пользователя не совпадает с приложением — обновите приложение.');
+      }
       const deadlineMs = Date.now() + config.requestBudgetMs;
 
       let promptTokens = 0;
