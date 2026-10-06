@@ -66,7 +66,13 @@ export class DeepSeekClient implements UpstreamClient {
           Authorization: `Bearer ${this.config.upstreamApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ model: this.config.upstreamModel, messages, temperature: 0 }),
+        body: JSON.stringify({
+          model: this.config.upstreamModel,
+          messages,
+          temperature: 0,
+          // Потолок генерации: цена запроса детерминирована, «простыня» за счёт ключа невозможна.
+          max_tokens: this.config.maxCompletionTokens,
+        }),
         signal: AbortSignal.timeout(timeoutMs),
       });
 

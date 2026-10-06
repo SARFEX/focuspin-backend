@@ -28,6 +28,8 @@ export interface Config {
   upstreamApiKey: string;
   upstreamModel: string;
   upstreamTimeoutMs: number;
+  /** Потолок генерации upstream: детерминированная цена запроса (8000 ≈ 30 команд схемы с описаниями). */
+  maxCompletionTokens: number;
   requestBudgetMs: number;
   correctiveRetry: boolean;
   maxBodyBytes: number;
@@ -114,6 +116,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     upstreamApiKey: upstreamApiKey === '' ? 'dev-missing-key' : upstreamApiKey,
     upstreamModel: readString(env, 'DEEPSEEK_MODEL', 'deepseek-flash'),
     upstreamTimeoutMs: readInt(env, 'UPSTREAM_TIMEOUT_MS', 40_000),
+    maxCompletionTokens: readInt(env, 'MAX_COMPLETION_TOKENS', 8_000),
     requestBudgetMs: readInt(env, 'REQUEST_BUDGET_MS', 42_000),
     correctiveRetry: readBool(env, 'CORRECTIVE_RETRY', true),
     maxBodyBytes: readInt(env, 'MAX_BODY_BYTES', 65_536),

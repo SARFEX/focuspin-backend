@@ -97,7 +97,16 @@ describe('DeepSeekClient', () => {
     if (captured === null) throw new Error('no request captured');
     expect(captured.path).toBe('/v1/chat/completions');
     expect(captured.auth).toBe('Bearer test-key');
-    expect(captured.body).toEqual({ model: 'test-model', messages: MESSAGES, temperature: 0 });
+    expect(captured.body).toEqual({ model: 'test-model', messages: MESSAGES, temperature: 0, max_tokens: 8000 });
+  });
+
+  test('max_tokens is configurable via MAX_COMPLETION_TOKENS', async () => {
+    handler = () => Response.json({ choices: [{ message: { content: '{"commands":[]}' } }] });
+    const client = makeClient({ DEEPSEEK_BASE_URL: baseUrl, MAX_COMPLETION_TOKENS: '1234' });
+    await client.complete(MESSAGES, Date.now() + 5000);
+    const captured = lastRequest;
+    if (captured === null) throw new Error('no request captured');
+    expect((captured.body as { max_tokens: number }).max_tokens).toBe(1234);
   });
 
   test('missing usage defaults tokens to 0', async () => {
