@@ -88,7 +88,7 @@
 | `LIMIT_INSTALL_IP_DAY` | `200` | `POST /v1/install` с одного IP за сутки; за мобильным NAT установок с одного адреса много — не занижайте |
 | `IP_RETENTION_DAYS` | `90` | через сколько суток `install_events.ip` обнуляется (чистка на старте и раз в час) |
 | `REFERRAL_THRESHOLD` | `3` | сколько засчитанных друзей (установки из Google Play по коду: `source=play`, `build=play`, уникальное устройство) нужно для Premium; **обязательна**, дефолта нет. Админка показывает `qualified` |
-| `PUBLIC_BASE_URL` | `https://api.focuspin.app` | https-origin для реферальной ссылки `…/i/<код>`; в production обязателен |
+| `PUBLIC_BASE_URL` | `https://focuspin.sarfex.dev` | https-origin для реферальной ссылки `…/i/<код>`; в production обязателен |
 | `PLAY_PACKAGE_ID` | `dev.sarfex.focuspin` (дефолт) | пакет в Google Play для редиректа `/i/<код>` |
 | `ADMIN_TOKEN` | `openssl rand -hex 32` | токен `/admin/*` (`Authorization: Bearer …`), ≥ 32 символов. **Не задан — админка выключена (404).** Только в `.env`/окружении сервера, не в git |
 
@@ -156,7 +156,7 @@ systemctl reload caddy
 ```bash
 # cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
 cloudflared tunnel create focuspin
-cloudflared tunnel route dns focuspin api.focuspin.app
+cloudflared tunnel route dns focuspin focuspin.sarfex.dev
 ```
 
 `~/.cloudflared/config.yml`:
@@ -165,7 +165,7 @@ cloudflared tunnel route dns focuspin api.focuspin.app
 tunnel: focuspin
 credentials-file: /etc/cloudflared/<tunnel-id>.json
 ingress:
-  - hostname: api.focuspin.app
+  - hostname: focuspin.sarfex.dev
     service: http://127.0.0.1:8080
     originRequest:
       # настоящие IP клиентов придут в X-Forwarded-For
