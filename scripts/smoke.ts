@@ -13,6 +13,9 @@ const SERVER_PORT = 8911;
 const BASE = `http://127.0.0.1:${SERVER_PORT}`;
 const DEVICE = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_1';
 const CONTRACT_HEADER = 'commands-v4';
+// Одноразовый токен админки на время прогона — нигде не хранится и не печатается.
+const ADMIN_TOKEN = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll('-', '');
+const DEVICE_REF = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb_1';
 
 interface Check {
   ok: boolean;
@@ -105,6 +108,8 @@ async function main(): Promise<number> {
       LIMIT_INSTALL_IP_DAY: '200',
       LIMIT_POST_CLAIM_EMAIL_DAY: '3',
       IP_RETENTION_DAYS: '90',
+      ADMIN_TOKEN,
+      PUBLIC_BASE_URL: BASE,
     },
     stdout: 'pipe',
     stderr: 'pipe',
@@ -224,6 +229,64 @@ async function main(): Promise<number> {
       });
       const err = await jsonError(res);
       return { ok: res.status === 400 && err.code === 'invalid_request', detail: `status=${res.status} code=${err.code}` };
+    });
+
+    // 4c. рефералы и установки: код → ссылка → редирект → install (идемпотентно) → заявка → админка.
+    const refHeaders = { Authorization: `Bearer ${DEVICE_REF}`, 'Content-Type': 'application/json' };
+    const adminHeaders = { Authorization: `Bearer ${ADMIN_TOKEN}`, 'Content-Type': 'application/json' };
+    let refCode = '';
+    await scenario('POST /v1/referral/code → 200 {code, link}', async () => {
+      const res = await fetch(`${BASE}/v1/referral/code`, {
+        method: 'POST',
+        headers: refHeaders,
+        body: JSON.stringify({ email: 'smoke@example.com' }),
+      });
+      const decoded = (await res.json()) as { code?: unknown; link?: unknown };
+      refCode = typeof decoded.code === 'string' ? decoded.code : '';
+      const ok = res.status === 200 && /^[0-9A-Z]{16}$/.test(refCode) && decoded.link === `${BASE}/i/${refCode}`;
+      return { ok, detail: `status=${res.status} code=${refCode.slice(0, 4)}…` };
+    });
+    await scenario('GET /i/:code → 302 на Google Play с referrer', async () => {
+      const res = await fetch(`${BASE}/i/${refCode}`, { redirect: 'manual' });
+      const location = res.headers.get('location') ?? '';
+      const ok = res.status === 302 && location.startsWith('https://play.google.com/store/apps/details?id=') && location.endsWith(`&referrer=${refCode}`);
+      return { ok, detail: `status=${res.status}` };
+    });
+    await scenario('POST /v1/install ×2 → 204 (идемпотентно по deviceId)', async () => {
+      const body = JSON.stringify({ ref_code: refCode, source: 'play_referral', build: 'play', app_version: '1.0.0', os_version: '14', locale: 'ru-RU' });
+      const first = await fetch(`${BASE}/v1/install`, { method: 'POST', headers: refHeaders, body });
+      const second = await fetch(`${BASE}/v1/install`, { method: 'POST', headers: refHeaders, body });
+      return { ok: first.status === 204 && second.status === 204, detail: `${first.status}, ${second.status}` };
+    });
+    await scenario('POST /v1/post-claim → 202', async () => {
+      const res = await fetch(`${BASE}/v1/post-claim`, {
+        method: 'POST',
+        headers: refHeaders,
+        body: JSON.stringify({ email: 'smoke@example.com', url: 'https://www.reddit.com/r/test/comments/smoke/post/' }),
+      });
+      return { ok: res.status === 202, detail: `status=${res.status}` };
+    });
+    await scenario('админка: без токена 401; с токеном — 1 установка у кода, статистика, approve заявки', async () => {
+      const denied = await fetch(`${BASE}/admin/referrals`);
+      if (denied.status !== 401) return { ok: false, detail: `без токена status=${denied.status}` };
+      const refs = (await (await fetch(`${BASE}/admin/referrals`, { headers: adminHeaders })).json()) as {
+        referrals?: Array<{ code: string; installs_count: number }>;
+      };
+      const mine = refs.referrals?.find((r) => r.code === refCode);
+      if (mine?.installs_count !== 1) return { ok: false, detail: `installs_count=${String(mine?.installs_count)}` };
+      const stats = (await (await fetch(`${BASE}/admin/installs/stats`, { headers: adminHeaders })).json()) as { total?: number };
+      if (stats.total !== 1) return { ok: false, detail: `stats.total=${String(stats.total)}` };
+      const list = (await (await fetch(`${BASE}/admin/post-claims?status=new`, { headers: adminHeaders })).json()) as {
+        post_claims?: Array<{ id: number }>;
+      };
+      const id = list.post_claims?.[0]?.id;
+      if (id === undefined) return { ok: false, detail: 'заявка не найдена' };
+      const decided = await fetch(`${BASE}/admin/post-claims/${id}`, {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ action: 'approve' }),
+      });
+      return { ok: decided.status === 200, detail: `approve status=${decided.status}` };
     });
 
     // 5. флуд с разных device id с одного IP → хотя бы один 429 с Retry-After.
