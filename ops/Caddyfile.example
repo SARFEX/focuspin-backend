@@ -18,5 +18,13 @@ api.focuspin.app {
 		-Server
 	}
 
+	# Админка (/admin/*) защищена токеном ADMIN_TOKEN самим бекендом. Дополнительно можно
+	# закрыть её по IP (раскомментируйте и подставьте свой адрес):
+	# @admin_blocked {
+	# 	path /admin/*
+	# 	not remote_ip 203.0.113.10
+	# }
+	# respond @admin_blocked 404
+
 	reverse_proxy focuspin-backend:8080
 }

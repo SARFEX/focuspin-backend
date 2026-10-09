@@ -74,6 +74,34 @@
 | `LIMIT_FRESH_DEVICE_DAY` | `15` | сутки для свежих устройств | Делает ротацию id невыгодной: новые устройства получают меньшую квоту |
 | `LIMIT_CONTRACT_FAILS_PER_HOUR` | `10` | устройство, час | Устройства, систематически ломающие контракт |
 
+### Рефералы, статистика установок, админка
+
+Новые переменные (подробности — README «Рефералы и статистика установок»).
+`LIMIT_*` и `IP_RETENTION_DAYS` обязательны, дефолтов в коде нет: **при обновлении
+с прежней версии без них сервер не стартует** — добавьте их в `.env`/
+`/etc/focuspin-backend.env` до перезапуска.
+
+| Переменная | Пример | Смысл |
+|---|---|---|
+| `LIMIT_REFERRAL_DEVICE_DAY` | `10` | `POST /v1/referral/code` и `/v1/post-claim`: запросов на устройство за сутки (на каждый путь отдельно) |
+| `LIMIT_REFERRAL_IP_DAY` | `30` | то же на IP |
+| `LIMIT_INSTALL_IP_DAY` | `200` | `POST /v1/install` с одного IP за сутки; за мобильным NAT установок с одного адреса много — не занижайте |
+| `LIMIT_POST_CLAIM_EMAIL_DAY` | `3` | заявок «Premium за пост» на один email за сутки |
+| `IP_RETENTION_DAYS` | `90` | через сколько суток `install_events.ip` обнуляется (чистка на старте и раз в час) |
+| `PUBLIC_BASE_URL` | `https://api.focuspin.app` | https-origin для реферальной ссылки `…/i/<код>`; в production обязателен |
+| `PLAY_PACKAGE_ID` | `dev.sarfex.focuspin` (дефолт) | пакет в Google Play для редиректа `/i/<код>` |
+| `ADMIN_TOKEN` | `openssl rand -hex 32` | токен `/admin/*` (`Authorization: Bearer …`), ≥ 32 символов. **Не задан — админка выключена (404).** Только в `.env`/окружении сервера, не в git |
+
+Админка: `curl -H "Authorization: Bearer $ADMIN_TOKEN" https://<домен>/admin/referrals`
+(также `/admin/installs/stats`, `/admin/post-claims?status=new`, `POST
+/admin/post-claims/<id>` с `{"action":"approve"}`). Выдача самого Premium
+остаётся ручной: `premium_until` — только пометка срока.
+
+**Персональные данные.** Для защиты от накрутки сервер сохраняет IP клиента при
+первой установке и email из реферальных кодов/заявок. Это нужно отразить в
+политике конфиденциальности и в Play Data safety (email, технические данные/IP,
+срок хранения = `IP_RETENTION_DAYS` для IP).
+
 Окно «день» — UTC. При отказе возвращается 429 `rate_limited` с заголовком
 `Retry-After` (секунды до конца окна + джиттер 1–10 c, чтобы волны ретраев
 не синхронизировались).
@@ -171,7 +199,8 @@ docker compose --project-directory . -f ops/docker-compose.yml --profile caddy u
 - [ ] SSH только по ключам: `PasswordAuthentication no` в `/etc/ssh/sshd_config`.
 - [ ] `unattended-upgrades` включён.
 - [ ] `/etc/focuspin-backend.env` или `.env` — chmod 600, вне git (`.gitignore` уже исключает).
-- [ ] Логи и БД по дизайну не содержат сырых device id и IP — только HMAC-хеши; не «улучшайте» это.
+- [ ] Логи и БД по дизайну не содержат сырых device id и IP — только HMAC-хеши; не «улучшайте» это. Исключение — таблицы рефералов: сырые email и IP установок (с ретеншном `IP_RETENTION_DAYS`), см. выше; в логи они не попадают.
+- [ ] `ADMIN_TOKEN` — длинный случайный (`openssl rand -hex 32`), хранится только в `.env` (chmod 600); не используйте токен из примеров. `/admin/*` по желанию закройте на уровне Caddy по IP (закомментированный пример в `ops/Caddyfile.example`).
 - [ ] `/metrics` и `/healthz` без авторизации — держите их доступными только с localhost
       (дефолт compose/systemd это уже обеспечивает; открывать наружу смысла нет).
 
@@ -202,6 +231,10 @@ curl -fsS http://127.0.0.1:8080/healthz    # {"ok":true,...}
 curl -s http://127.0.0.1:8080/metrics
 ```
 
+Метрики рефералов: `install_ok`, `install_dup`, `install_unknown_ref`,
+`referral_code_ok`, `referral_redirect`, `referral_redirect_unknown`,
+`post_claim_ok`, `post_claim_dup`, `admin_auth_fail` (рост — перебор токена).
+
 Полезные ключи `/metrics`: `magic_requests`, `magic_ok`, `http_200`, `http_401`,
 `http_429`, `rate_limited_<причина>` (`ip_minute`, `ip_devices`, `device_day`, …),
 `contract_fails`, `inflight_rejected`, `auth_fail`, `request_ms_avg_ms`.
@@ -213,9 +246,14 @@ curl -s http://127.0.0.1:8080/metrics
 
 ## Бэкапы
 
-Не нужны. В БД — только анонимные HMAC-хеши и счётчики лимитов: потеря при сбое
-означает лишь сброс квот (худший случай — кто-то получит лишние запросы до конца
-суток). После восстановления сервера просто пересоздайте каталог данных:
+Счётчики лимитов и HMAC-хеши терять не страшно: потеря означает лишь сброс квот
+(худший случай — кто-то получит лишние запросы до конца суток). Но с рефералами
+в БД появились данные, которые не восстановить: `referral_codes` (выданные
+ссылки перестанут работать), `install_events` (статистика), `post_claims`
+(заявки и решения). Для них делайте периодический бэкап файла SQLite
+(`sqlite3 focuspin.db ".backup backup.db"` — безопасно при работающем
+сервере) и храните бэкап так же осторожно, как сам сервер: в нём email и IP.
+Без этих данных после сбоя достаточно пересоздать каталог:
 
 ```bash
 mkdir -p /var/lib/focuspin-backend   # или ./data для Docker
