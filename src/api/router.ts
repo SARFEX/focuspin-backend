@@ -5,6 +5,7 @@ import type { MagicOutput } from '../llm/pipeline.ts';
 import type { RateVerdict } from '../limiter/limiter.ts';
 import type { AppDeps, RequestContext } from '../types.ts';
 import { authenticate, resolveClientIp } from './common.ts';
+import { handleAdminRequest } from './admin.ts';
 import { handleReferralRequest } from './referral.ts';
 
 /** The only production route; everything else returns undefined -> server's 404. */
@@ -20,7 +21,7 @@ const MESSAGE_SHAPE_MESSAGE = 'Каждое сообщение должно бы
 
 /**
  * Роутер API. Реферальные пути (/v1/referral/code, /v1/install, /v1/post-claim, /i/:code —
- * см. api/referral.ts) отдаёт соответствующему модулю. Обрабатывает POST /v1/chat/completions;
+ * см. api/referral.ts) и админку (/admin/*, api/admin.ts) отдаёт соответствующим модулям. Обрабатывает POST /v1/chat/completions;
  * всё остальное возвращает undefined — server.ts отдаст 404. Порядок magic-запроса: 405 -> global inflight ->
  * auth (Bearer deviceId) -> client ip -> парсинг и структурная валидация тела ->
  * limiter.beginRequest -> pipeline.run (при contract_violation роутер сам зовёт
@@ -35,6 +36,8 @@ export async function handleRequest(
 ): Promise<Response | undefined> {
   const referral = await handleReferralRequest(request, url, deps, ctx);
   if (referral !== undefined) return referral;
+  const admin = await handleAdminRequest(request, url, deps);
+  if (admin !== undefined) return admin;
   if (url.pathname !== MAGIC_PATH) return undefined;
   const startedAtMs = performance.now();
 
