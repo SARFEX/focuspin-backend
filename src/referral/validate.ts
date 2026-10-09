@@ -3,7 +3,6 @@ import { HttpError } from '../errors.ts';
 /** Ручная валидация входных данных публичных реферальных путей (zero-dep: без zod). */
 
 export const MAX_EMAIL_LEN = 254;
-export const MAX_URL_LEN = 512;
 /** Тела этих путей — несколько коротких полей; больше 4 КБ не бывает. */
 export const MAX_REFERRAL_BODY_BYTES = 4096;
 
@@ -51,26 +50,6 @@ export function parseEmail(value: unknown): string {
     return bad('Некорректный email.');
   }
   return email;
-}
-
-/** Ссылка на пост: только https, без логина/пароля, ≤512 символов, нормализуется без фрагмента. */
-export function parsePostUrl(value: unknown): string {
-  if (typeof value !== 'string') return bad('Поле url должно быть строкой.');
-  const raw = value.trim();
-  if (raw.length === 0 || raw.length > MAX_URL_LEN) return bad('Некорректный url.');
-  let parsed: URL;
-  try {
-    parsed = new URL(raw);
-  } catch {
-    return bad('Некорректный url.');
-  }
-  if (parsed.protocol !== 'https:' || parsed.username !== '' || parsed.password !== '' || !parsed.hostname.includes('.')) {
-    return bad('Нужна https-ссылка на пост.');
-  }
-  parsed.hash = '';
-  const normalized = parsed.toString();
-  if (normalized.length > MAX_URL_LEN) return bad('Некорректный url.');
-  return normalized;
 }
 
 export interface InstallPayload {

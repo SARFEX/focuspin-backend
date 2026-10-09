@@ -5,7 +5,7 @@ import { DAY_MS } from '../util/time.ts';
 import { generateReferralCode, normalizeReferralCode } from './codes.ts';
 import { runIpRetention, startIpRetention } from './retention.ts';
 import { ReferralStore, type InstallRow } from './store.ts';
-import { parseEmail, parseInstall, parsePostUrl } from './validate.ts';
+import { parseEmail, parseInstall } from './validate.ts';
 
 const T0 = Date.UTC(2026, 9, 4, 12, 0, 0);
 
@@ -69,25 +69,6 @@ describe('валидация', () => {
     invalid(() => parseEmail(`${'a'.repeat(65)}@x.com`));
   });
 
-  test('url: только https, без креденшелов, ≤512, фрагмент отбрасывается', () => {
-    expect(parsePostUrl('https://www.reddit.com/r/test/comments/abc/post/#top')).toBe(
-      'https://www.reddit.com/r/test/comments/abc/post/',
-    );
-    for (const bad of [
-      'http://reddit.com/x',
-      'javascript:alert(1)',
-      'ftp://x.com/a',
-      'https://user:pw@reddit.com/x',
-      'https://localhost/x',
-      'not a url',
-      '',
-      7,
-    ]) {
-      invalid(() => parsePostUrl(bad));
-    }
-    invalid(() => parsePostUrl(`https://reddit.com/${'a'.repeat(600)}`));
-  });
-
   test('install: валидное тело и граничные ошибки', () => {
     const ok = parseInstall({
       ref_code: 'whatever',
@@ -136,13 +117,6 @@ describe('ReferralStore', () => {
     expect(store.installStats().bySource).toEqual([{ source: 'first', count: 1 }]);
   });
 
-  test('insertPostClaim: тот же url не множится', () => {
-    const store = new ReferralStore(openDb(':memory:'));
-    expect(store.insertPostClaim('a@x.com', 'https://r.com/1', T0)).toBe(true);
-    expect(store.insertPostClaim('b@x.com', 'https://r.com/1', T0)).toBe(false);
-    expect(store.listPostClaims(null, 10)).toHaveLength(1);
-  });
-
   test('ретеншн IP: обнуляет только старше срока, остальные поля и свежие IP целы', () => {
     const db = openDb(':memory:');
     const store = new ReferralStore(db);
@@ -166,18 +140,6 @@ describe('ReferralStore', () => {
     expect(store.nullOldIps(now, 90)).toBe(0);
     // позже созреет и edge
     expect(store.nullOldIps(now + 1 * DAY_MS, 90)).toBe(1);
-  });
-
-  test('decidePostClaim: решение один раз, только из new', () => {
-    const store = new ReferralStore(openDb(':memory:'));
-    store.insertPostClaim('a@x.com', 'https://r.com/1', T0);
-    const id = store.listPostClaims(null, 1)[0]?.id ?? -1;
-    expect(store.decidePostClaim(id, 'approved', T0 + 1, T0 + 100)).toBe(true);
-    expect(store.decidePostClaim(id, 'rejected', T0 + 2, null)).toBe(false);
-    const claim = store.getPostClaim(id);
-    expect(claim?.status).toBe('approved');
-    expect(claim?.premiumUntil).toBe(T0 + 100);
-    expect(claim?.checkedAt).toBe(T0 + 1);
   });
 
   test('adminReferrals и installStats: счётчики по коду, день/источник/сборка', () => {

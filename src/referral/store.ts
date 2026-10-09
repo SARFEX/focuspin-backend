@@ -2,8 +2,6 @@ import type { Database, SQLQueryBindings, Statement } from 'bun:sqlite';
 import { DAY_MS } from '../util/time.ts';
 import { generateReferralCode } from './codes.ts';
 
-export type ClaimStatus = 'new' | 'approved' | 'rejected' | 'revoked';
-
 export interface InstallRow {
   /** HMAC-хеш device id (сырой id в БД не пишем). */
   deviceId: string;
@@ -33,19 +31,9 @@ export interface InstallStats {
   byBuild: Array<{ build: string; count: number }>;
 }
 
-export interface PostClaimRow {
-  id: number;
-  email: string;
-  url: string;
-  status: ClaimStatus;
-  createdAt: number;
-  checkedAt: number | null;
-  premiumUntil: number | null;
-}
-
 const MAX_CODE_ATTEMPTS = 5;
 
-/** Синхронные запросы к таблицам рефералов/установок/заявок. Всё — параметризованный SQL. */
+/** Синхронные запросы к таблицам рефералов и установок. Всё — параметризованный SQL. */
 export class ReferralStore {
   constructor(private readonly db: Database) {}
 
@@ -81,17 +69,6 @@ export class ReferralStore {
          (device_id, ref_code, source, build, app_version, os_version, locale, ip, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(row.deviceId, row.refCode, row.source, row.build, row.appVersion, row.osVersion, row.locale, row.ip, nowMs);
-    return result.changes > 0;
-  }
-
-  /** true — заявка новая; false — этот url уже заявлен (повторы и чужие дубли не множим). */
-  insertPostClaim(email: string, url: string, nowMs: number): boolean {
-    const result = this.q('INSERT OR IGNORE INTO post_claims (email, url, status, created_at) VALUES (?, ?, ?, ?)').run(
-      email,
-      url,
-      'new',
-      nowMs,
-    );
     return result.changes > 0;
   }
 
@@ -144,49 +121,4 @@ export class ReferralStore {
       ).all(),
     };
   }
-
-  listPostClaims(status: ClaimStatus | null, limit: number): PostClaimRow[] {
-    const sql = `SELECT id, email, url, status, created_at, checked_at, premium_until FROM post_claims
-                  ${status === null ? '' : 'WHERE status = ?'} ORDER BY id DESC LIMIT ?`;
-    const rows = this.q<ClaimDbRow>(sql).all(...(status === null ? [limit] : [status, limit]));
-    return rows.map(toClaim);
-  }
-
-  getPostClaim(id: number): PostClaimRow | null {
-    const row = this.q<ClaimDbRow>(
-      'SELECT id, email, url, status, created_at, checked_at, premium_until FROM post_claims WHERE id = ?',
-    ).get(id);
-    return row ? toClaim(row) : null;
-  }
-
-  /** Решение по заявке: только из статуса new (атомарно). true — применено. */
-  decidePostClaim(id: number, status: 'approved' | 'rejected', nowMs: number, premiumUntil: number | null): boolean {
-    return (
-      this.q(
-        "UPDATE post_claims SET status = ?, checked_at = ?, premium_until = ? WHERE id = ? AND status = 'new'",
-      ).run(status, nowMs, premiumUntil, id).changes > 0
-    );
-  }
-}
-
-interface ClaimDbRow {
-  id: number;
-  email: string;
-  url: string;
-  status: ClaimStatus;
-  created_at: number;
-  checked_at: number | null;
-  premium_until: number | null;
-}
-
-function toClaim(row: ClaimDbRow): PostClaimRow {
-  return {
-    id: row.id,
-    email: row.email,
-    url: row.url,
-    status: row.status,
-    createdAt: row.created_at,
-    checkedAt: row.checked_at,
-    premiumUntil: row.premium_until,
-  };
 }

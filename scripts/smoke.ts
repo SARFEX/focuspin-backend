@@ -106,7 +106,6 @@ async function main(): Promise<number> {
       LIMIT_REFERRAL_DEVICE_DAY: '10',
       LIMIT_REFERRAL_IP_DAY: '30',
       LIMIT_INSTALL_IP_DAY: '200',
-      LIMIT_POST_CLAIM_EMAIL_DAY: '3',
       IP_RETENTION_DAYS: '90',
       ADMIN_TOKEN,
       PUBLIC_BASE_URL: BASE,
@@ -258,15 +257,7 @@ async function main(): Promise<number> {
       const second = await fetch(`${BASE}/v1/install`, { method: 'POST', headers: refHeaders, body });
       return { ok: first.status === 204 && second.status === 204, detail: `${first.status}, ${second.status}` };
     });
-    await scenario('POST /v1/post-claim → 202', async () => {
-      const res = await fetch(`${BASE}/v1/post-claim`, {
-        method: 'POST',
-        headers: refHeaders,
-        body: JSON.stringify({ email: 'smoke@example.com', url: 'https://www.reddit.com/r/test/comments/smoke/post/' }),
-      });
-      return { ok: res.status === 202, detail: `status=${res.status}` };
-    });
-    await scenario('админка: без токена 401; с токеном — 1 установка у кода, статистика, approve заявки', async () => {
+    await scenario('админка: без токена 401; с токеном — 1 установка у кода и статистика', async () => {
       const denied = await fetch(`${BASE}/admin/referrals`);
       if (denied.status !== 401) return { ok: false, detail: `без токена status=${denied.status}` };
       const refs = (await (await fetch(`${BASE}/admin/referrals`, { headers: adminHeaders })).json()) as {
@@ -276,17 +267,7 @@ async function main(): Promise<number> {
       if (mine?.installs_count !== 1) return { ok: false, detail: `installs_count=${String(mine?.installs_count)}` };
       const stats = (await (await fetch(`${BASE}/admin/installs/stats`, { headers: adminHeaders })).json()) as { total?: number };
       if (stats.total !== 1) return { ok: false, detail: `stats.total=${String(stats.total)}` };
-      const list = (await (await fetch(`${BASE}/admin/post-claims?status=new`, { headers: adminHeaders })).json()) as {
-        post_claims?: Array<{ id: number }>;
-      };
-      const id = list.post_claims?.[0]?.id;
-      if (id === undefined) return { ok: false, detail: 'заявка не найдена' };
-      const decided = await fetch(`${BASE}/admin/post-claims/${id}`, {
-        method: 'POST',
-        headers: adminHeaders,
-        body: JSON.stringify({ action: 'approve' }),
-      });
-      return { ok: decided.status === 200, detail: `approve status=${decided.status}` };
+      return { ok: true, detail: 'ok' };
     });
 
     // 5. флуд с разных device id с одного IP → хотя бы один 429 с Retry-After.

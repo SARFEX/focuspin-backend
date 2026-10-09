@@ -83,22 +83,19 @@
 
 | Переменная | Пример | Смысл |
 |---|---|---|
-| `LIMIT_REFERRAL_DEVICE_DAY` | `10` | `POST /v1/referral/code` и `/v1/post-claim`: запросов на устройство за сутки (на каждый путь отдельно) |
+| `LIMIT_REFERRAL_DEVICE_DAY` | `10` | `POST /v1/referral/code`: запросов на устройство за сутки |
 | `LIMIT_REFERRAL_IP_DAY` | `30` | то же на IP |
 | `LIMIT_INSTALL_IP_DAY` | `200` | `POST /v1/install` с одного IP за сутки; за мобильным NAT установок с одного адреса много — не занижайте |
-| `LIMIT_POST_CLAIM_EMAIL_DAY` | `3` | заявок «Premium за пост» на один email за сутки |
 | `IP_RETENTION_DAYS` | `90` | через сколько суток `install_events.ip` обнуляется (чистка на старте и раз в час) |
 | `PUBLIC_BASE_URL` | `https://api.focuspin.app` | https-origin для реферальной ссылки `…/i/<код>`; в production обязателен |
 | `PLAY_PACKAGE_ID` | `dev.sarfex.focuspin` (дефолт) | пакет в Google Play для редиректа `/i/<код>` |
 | `ADMIN_TOKEN` | `openssl rand -hex 32` | токен `/admin/*` (`Authorization: Bearer …`), ≥ 32 символов. **Не задан — админка выключена (404).** Только в `.env`/окружении сервера, не в git |
 
 Админка: `curl -H "Authorization: Bearer $ADMIN_TOKEN" https://<домен>/admin/referrals`
-(также `/admin/installs/stats`, `/admin/post-claims?status=new`, `POST
-/admin/post-claims/<id>` с `{"action":"approve"}`). Выдача самого Premium
-остаётся ручной: `premium_until` — только пометка срока.
+(также `/admin/installs/stats`). Выдача самого Premium остаётся ручной.
 
 **Персональные данные.** Для защиты от накрутки сервер сохраняет IP клиента при
-первой установке и email из реферальных кодов/заявок. Это нужно отразить в
+первой установке и email из реферальных кодов. Это нужно отразить в
 политике конфиденциальности и в Play Data safety (email, технические данные/IP,
 срок хранения = `IP_RETENTION_DAYS` для IP).
 
@@ -233,7 +230,7 @@ curl -s http://127.0.0.1:8080/metrics
 
 Метрики рефералов: `install_ok`, `install_dup`, `install_unknown_ref`,
 `referral_code_ok`, `referral_redirect`, `referral_redirect_unknown`,
-`post_claim_ok`, `post_claim_dup`, `admin_auth_fail` (рост — перебор токена).
+`admin_auth_fail` (рост — перебор токена).
 
 Полезные ключи `/metrics`: `magic_requests`, `magic_ok`, `http_200`, `http_401`,
 `http_429`, `rate_limited_<причина>` (`ip_minute`, `ip_devices`, `device_day`, …),
@@ -249,8 +246,7 @@ curl -s http://127.0.0.1:8080/metrics
 Счётчики лимитов и HMAC-хеши терять не страшно: потеря означает лишь сброс квот
 (худший случай — кто-то получит лишние запросы до конца суток). Но с рефералами
 в БД появились данные, которые не восстановить: `referral_codes` (выданные
-ссылки перестанут работать), `install_events` (статистика), `post_claims`
-(заявки и решения). Для них делайте периодический бэкап файла SQLite
+ссылки перестанут работать), `install_events` (статистика). Для них делайте периодический бэкап файла SQLite
 (`sqlite3 focuspin.db ".backup backup.db"` — безопасно при работающем
 сервере) и храните бэкап так же осторожно, как сам сервер: в нём email и IP.
 Без этих данных после сбоя достаточно пересоздать каталог:

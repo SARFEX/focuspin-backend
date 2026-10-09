@@ -3,9 +3,8 @@ import { deriveIdentity } from '../identity/device.ts';
 import { LimiterStore } from '../limiter/store.ts';
 import { normalizeReferralCode } from '../referral/codes.ts';
 import { ReferralStore } from '../referral/store.ts';
-import { parseEmail, parseInstall, parsePostUrl, readJsonObject } from '../referral/validate.ts';
+import { parseEmail, parseInstall, readJsonObject } from '../referral/validate.ts';
 import type { AppDeps, RequestContext } from '../types.ts';
-import { hmacHex } from '../util/hmac.ts';
 import { secondsUntilWindowEnd, windowStartMs } from '../util/time.ts';
 import { authenticate, resolveClientIp } from './common.ts';
 
@@ -13,16 +12,14 @@ import { authenticate, resolveClientIp } from './common.ts';
  * Публичные пути рефералов и статистики установок:
  *   POST /v1/referral/code  {email}                      -> 200 {code, link}
  *   POST /v1/install        {ref_code?, source, ...}     -> 204 (идемпотентно по deviceId)
- *   POST /v1/post-claim     {email, url}                 -> 202
  *   GET  /i/:code                                         -> 302 на Google Play с referrer
- * Первые три — Bearer deviceId, как /v1/chat/completions; лимиты — дневные счётчики
+ * Первые два — Bearer deviceId, как /v1/chat/completions; лимиты — дневные счётчики
  * в той же таблице counters по HMAC-ключам (device/ip/email). Апстрим не вызывают,
- * поэтому в глобальный inflight не входят. Содержимое тел (email/url) в логи не пишется.
+ * поэтому в глобальный inflight не входят. Содержимое тел (email) в логи не пишется.
  */
 
 const REFERRAL_CODE_PATH = '/v1/referral/code';
 const INSTALL_PATH = '/v1/install';
-const POST_CLAIM_PATH = '/v1/post-claim';
 const REDIRECT_PREFIX = '/i/';
 /** Потолок значения referrer в ссылке Google Play. */
 const MAX_REFERRER_LEN = 512;
@@ -34,9 +31,6 @@ const SCOPE = {
   codeDevice: 'rc_dev',
   codeIp: 'rc_ip',
   installIp: 'in_ip',
-  claimDevice: 'pc_dev',
-  claimIp: 'pc_ip',
-  claimEmail: 'pc_email',
 } as const;
 
 export async function handleReferralRequest(
@@ -47,7 +41,7 @@ export async function handleReferralRequest(
 ): Promise<Response | undefined> {
   const path = url.pathname;
   const isRedirect = path.startsWith(REDIRECT_PREFIX);
-  if (path !== REFERRAL_CODE_PATH && path !== INSTALL_PATH && path !== POST_CLAIM_PATH && !isRedirect) {
+  if (path !== REFERRAL_CODE_PATH && path !== INSTALL_PATH && !isRedirect) {
     return undefined;
   }
   try {
@@ -83,7 +77,7 @@ async function handlePost(request: Request, url: URL, deps: AppDeps, ctx: Reques
       deps.state.inc('referral_code_ok');
       return Response.json({ code, link: `${publicBase(deps, url)}/i/${code}` });
     }
-    case INSTALL_PATH: {
+    default: {
       enforce(counters, SCOPE.installIp, identity.ipkey, limits.installIpDay, nowMs);
       const body = await readJsonObject(request);
       const payload = parseInstall(body);
@@ -112,18 +106,6 @@ async function handlePost(request: Request, url: URL, deps: AppDeps, ctx: Reques
       );
       deps.state.inc(inserted ? 'install_ok' : 'install_dup');
       return new Response(null, { status: 204 });
-    }
-    default: {
-      enforce(counters, SCOPE.claimDevice, identity.idkey, limits.referralDeviceDay, nowMs);
-      enforce(counters, SCOPE.claimIp, identity.ipkey, limits.referralIpDay, nowMs);
-      const body = await readJsonObject(request);
-      const email = parseEmail(body['email']);
-      const postUrl = parsePostUrl(body['url']);
-      enforce(counters, SCOPE.claimEmail, hmacHex(deps.config.hmacSecret, email), limits.postClaimEmailDay, nowMs);
-      // Повтор той же ссылки отвечает так же 202 — клиенту не раскрываем, что заявка уже есть.
-      const inserted = store.insertPostClaim(email, postUrl, nowMs);
-      deps.state.inc(inserted ? 'post_claim_ok' : 'post_claim_dup');
-      return Response.json({ status: 'accepted' }, { status: 202 });
     }
   }
 }

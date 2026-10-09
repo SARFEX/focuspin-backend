@@ -21,7 +21,6 @@ const BASE_ENV: Record<string, string> = {
   LIMIT_REFERRAL_DEVICE_DAY: '10',
   LIMIT_REFERRAL_IP_DAY: '30',
   LIMIT_INSTALL_IP_DAY: '200',
-  LIMIT_POST_CLAIM_EMAIL_DAY: '3',
   IP_RETENTION_DAYS: '90',
 };
 
@@ -33,14 +32,12 @@ describe('config: рефералы и установки', () => {
     expect(config.referral.publicBaseUrl).toBe('');
     expect(config.referral.ipRetentionDays).toBe(90);
     expect(config.limits.referralDeviceDay).toBe(10);
-    expect(config.limits.postClaimEmailDay).toBe(3);
   });
 
   test.each([
     'LIMIT_REFERRAL_DEVICE_DAY',
     'LIMIT_REFERRAL_IP_DAY',
     'LIMIT_INSTALL_IP_DAY',
-    'LIMIT_POST_CLAIM_EMAIL_DAY',
     'IP_RETENTION_DAYS',
   ])('%s обязателен: без значения конфиг не собирается', (name) => {
     const env = { ...BASE_ENV };

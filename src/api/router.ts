@@ -20,7 +20,7 @@ const TWO_MESSAGES_MESSAGE = 'Ровно два сообщения: system и us
 const MESSAGE_SHAPE_MESSAGE = 'Каждое сообщение должно быть объектом с role и непустым content.';
 
 /**
- * Роутер API. Реферальные пути (/v1/referral/code, /v1/install, /v1/post-claim, /i/:code —
+ * Роутер API. Реферальные пути (/v1/referral/code, /v1/install, /i/:code —
  * см. api/referral.ts) и админку (/admin/*, api/admin.ts) отдаёт соответствующим модулям. Обрабатывает POST /v1/chat/completions;
  * всё остальное возвращает undefined — server.ts отдаст 404. Порядок magic-запроса: 405 -> global inflight ->
  * auth (Bearer deviceId) -> client ip -> парсинг и структурная валидация тела ->

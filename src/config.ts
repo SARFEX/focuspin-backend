@@ -13,17 +13,15 @@ export interface LimitsConfig {
   freshDeviceHours: number;
   freshDeviceDay: number;
   contractFailsPerHour: number;
-  /** Публичные записывающие пути (реферальный код, post-claim): на устройство / сутки, отдельно на каждый путь. */
+  /** Публичные записывающие пути (реферальный код): на устройство / сутки, отдельно на каждый путь. */
   referralDeviceDay: number;
   /** То же на IP / сутки. */
   referralIpDay: number;
   /** POST /v1/install: запросов с одного IP / сутки (повтор того же deviceId тоже считается). */
   installIpDay: number;
-  /** POST /v1/post-claim: заявок на один email / сутки. */
-  postClaimEmailDay: number;
 }
 
-/** Рефералы, статистика установок и заявки «Premium за пост». */
+/** Рефералы и статистика установок. */
 export interface ReferralConfig {
   /** Публичный origin бекенда для реферальной ссылки (https://<домен>), без хвостового «/». Пусто — origin запроса (только dev/test). */
   publicBaseUrl: string;
@@ -198,7 +196,6 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
       referralDeviceDay: readRequiredInt(env, 'LIMIT_REFERRAL_DEVICE_DAY'),
       referralIpDay: readRequiredInt(env, 'LIMIT_REFERRAL_IP_DAY'),
       installIpDay: readRequiredInt(env, 'LIMIT_INSTALL_IP_DAY'),
-      postClaimEmailDay: readRequiredInt(env, 'LIMIT_POST_CLAIM_EMAIL_DAY'),
     },
     referral: {
       publicBaseUrl: readPublicBaseUrl(env, production),

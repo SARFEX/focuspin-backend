@@ -115,13 +115,12 @@ HTTP/1.1 401 Unauthorized
 {"error":{"code":"unauthorized","message":"..."}}
 ```
 
-## Рефералы, статистика установок, заявки «Premium за пост»
+## Рефералы и статистика установок
 
-Дополнительные пути для сборки `play` приложения. Все три POST — с тем же
+Дополнительные пути для сборки `play` приложения. Оба POST — с тем же
 `Authorization: Bearer <deviceId>` и JSON-телом (≤ 4 КБ), ошибки — тот же конверт
 (`400 invalid_request`, `401`, `405`, `413`, `429 rate_limited` + `Retry-After`).
-Лимиты — дневные, на устройство и IP (env `LIMIT_REFERRAL_*`, `LIMIT_INSTALL_IP_DAY`,
-`LIMIT_POST_CLAIM_EMAIL_DAY`). Email проверяется только по формату, владение не
+Лимиты — дневные, на устройство и IP (env `LIMIT_REFERRAL_*`, `LIMIT_INSTALL_IP_DAY`). Email проверяется только по формату, владение не
 подтверждается.
 
 ### POST /v1/referral/code
@@ -149,16 +148,6 @@ HTTP/1.1 401 Unauthorized
 Идемпотентно по deviceId: первая запись побеждает, повтор игнорируется (тоже 204).
 Сервер сохраняет IP клиента (для проверки накрутки, срок хранения — `IP_RETENTION_DAYS`).
 
-### POST /v1/post-claim
-
-```
-{"email": "user@example.com", "url": "https://www.reddit.com/r/.../comments/.../"}
-→ 202 {"status": "accepted"}
-```
-
-`url` — только https, без логина/пароля, ≤ 512 символов. Повтор уже заявленной
-ссылки отвечает 202 без новой заявки.
-
 ### GET /i/:code
 
 Без авторизации. `302` на
@@ -174,5 +163,3 @@ HTTP/1.1 401 Unauthorized
 |---|---|
 | `GET /admin/referrals[?limit=]` | `{referrals:[{code, email, created_at, installs_count, installs:[{device_id, ip, created_at}]}]}`; `device_id` — HMAC-хеш |
 | `GET /admin/installs/stats` | `{total, with_ref_code, by_day:[{day,count}], by_source:[…], by_build:[…]}` |
-| `GET /admin/post-claims[?status=new\|approved\|rejected\|revoked&limit=]` | `{post_claims:[{id, email, url, status, created_at, checked_at, premium_until}]}` |
-| `POST /admin/post-claims/:id` | `{"action":"approve"\|"reject", "premium_months"?: 1..36}` (по умолчанию 6; только при approve) → `{post_claim}`; повторное решение — 409 |

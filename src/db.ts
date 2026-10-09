@@ -69,16 +69,7 @@ function ensureSchema(db: Database): void {
     CREATE INDEX IF NOT EXISTS idx_install_events_ref ON install_events (ref_code);
     CREATE INDEX IF NOT EXISTS idx_install_events_created ON install_events (created_at);
 
-    CREATE TABLE IF NOT EXISTS post_claims (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT NOT NULL,
-      url TEXT NOT NULL UNIQUE,
-      status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'approved', 'rejected', 'revoked')),
-      created_at INTEGER NOT NULL,
-      checked_at INTEGER,
-      premium_until INTEGER
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_post_claims_status ON post_claims (status);
+    -- Фича «Premium за пост» убрана (решение владельца): таблицу из первой версии ветки сносим.
+    DROP TABLE IF EXISTS post_claims;
   `);
 }
