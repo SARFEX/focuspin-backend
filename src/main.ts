@@ -7,6 +7,7 @@ import { RuntimeState } from './state.ts';
 import { Limiter } from './limiter/limiter.ts';
 import { DeepSeekClient } from './llm/deepseek.ts';
 import { MagicPipeline } from './llm/pipeline.ts';
+import { startIpRetention } from './referral/retention.ts';
 import { createApp } from './server.ts';
 
 const config = loadConfig(process.env as Record<string, string | undefined>);
@@ -32,6 +33,9 @@ const purgeTimer = setInterval(() => {
   }
 }, 10 * 60_000);
 purgeTimer.unref?.();
+
+// Ретеншн IP установок (персональные данные): чистка на старте и раз в час.
+startIpRetention(db, config.referral.ipRetentionDays, log);
 
 let shuttingDown = false;
 function shutdown(signal: string): void {

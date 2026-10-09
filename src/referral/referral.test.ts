@@ -3,6 +3,7 @@ import { openDb } from '../db.ts';
 import { HttpError } from '../errors.ts';
 import { DAY_MS } from '../util/time.ts';
 import { generateReferralCode, normalizeReferralCode } from './codes.ts';
+import { runIpRetention, startIpRetention } from './retention.ts';
 import { ReferralStore, type InstallRow } from './store.ts';
 import { parseEmail, parseInstall, parsePostUrl } from './validate.ts';
 
@@ -207,5 +208,38 @@ describe('ReferralStore', () => {
       { build: 'play', count: 2 },
       { build: 'full', count: 1 },
     ]);
+  });
+});
+
+describe('runIpRetention', () => {
+  const silent = { info: () => {}, warn: () => {} };
+
+  test('обнуляет просроченные IP и возвращает их число; логирует без значений IP', () => {
+    const db = openDb(':memory:');
+    const store = new ReferralStore(db);
+    store.insertInstall(install({ deviceId: '1'.repeat(64), ip: '198.51.100.1' }), T0);
+    store.insertInstall(install({ deviceId: '2'.repeat(64), ip: '198.51.100.2' }), T0 + 80 * DAY_MS);
+    const lines: string[] = [];
+    const log = { info: (m: string, f?: object) => lines.push(m + JSON.stringify(f)), warn: () => {} };
+    expect(runIpRetention(db, 30, log, T0 + 100 * DAY_MS)).toBe(1);
+    expect(lines.join('')).not.toContain('198.51');
+    const ips = db.query<{ ip: string | null }, []>('SELECT ip FROM install_events ORDER BY id').all();
+    expect(ips.map((r) => r.ip)).toEqual([null, '198.51.100.2']);
+  });
+
+  test('сбой БД не бросает: 0 и warn', () => {
+    const db = openDb(':memory:');
+    db.close();
+    const warns: string[] = [];
+    expect(runIpRetention(db, 30, { info: () => {}, warn: (m: string) => warns.push(m) })).toBe(0);
+    expect(warns).toEqual(['ip retention failed']);
+  });
+
+  test('startIpRetention чистит сразу на старте; таймер можно остановить', () => {
+    const db = openDb(':memory:');
+    new ReferralStore(db).insertInstall(install({ ip: '198.51.100.1' }), Date.now() - 200 * DAY_MS);
+    const timer = startIpRetention(db, 90, silent);
+    clearInterval(timer);
+    expect(db.query<{ ip: string | null }, []>('SELECT ip FROM install_events').get()?.ip).toBeNull();
   });
 });
