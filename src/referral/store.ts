@@ -23,6 +23,8 @@ export interface ReferralAdminRow {
   code: string;
   email: string;
   createdAt: number;
+  /** Когда владелец вручную выдал Premium за этот код; null — ещё нет. */
+  premiumGrantedAt: number | null;
   /** Все установки с этим кодом (любой источник и сборка). */
   totalInstalls: number;
   /** Засчитанные: уникальные устройства с source=play и build=play (device_id UNIQUE — одно устройство один раз). */
@@ -39,6 +41,8 @@ export interface ReferralAdminRow {
 
 export interface AdminReferralsQuery {
   limit: number;
+  /** Только этот код (для ответа после grant). */
+  code?: string;
   /** Если задан — только коды, у которых засчитанных установок не меньше порога (REFERRAL_THRESHOLD). */
   minCounted?: number;
 }
@@ -107,13 +111,23 @@ export class ReferralStore {
    */
   adminReferrals(query: AdminReferralsQuery): ReferralAdminRow[] {
     const having = query.minCounted === undefined ? '' : 'HAVING counted >= ?';
+    const where = query.code === undefined ? '' : 'WHERE c.code = ?';
     const params: SQLQueryBindings[] = [COUNTED_SOURCE, COUNTED_BUILD];
+    if (query.code !== undefined) params.push(query.code);
     if (query.minCounted !== undefined) params.push(query.minCounted);
     params.push(query.limit);
-    const codes = this.q<{ code: string; email: string; created_at: number; installs: number; counted: number }>(
-      `SELECT c.code, c.email, c.created_at, COUNT(i.id) AS installs,
+    const codes = this.q<{
+      code: string;
+      email: string;
+      created_at: number;
+      premium_granted_at: number | null;
+      installs: number;
+      counted: number;
+    }>(
+      `SELECT c.code, c.email, c.created_at, c.premium_granted_at, COUNT(i.id) AS installs,
               COALESCE(SUM(CASE WHEN i.source = ? AND i.build = ? THEN 1 ELSE 0 END), 0) AS counted
          FROM referral_codes c LEFT JOIN install_events i ON i.ref_code = c.code
+        ${where}
         GROUP BY c.code ${having}
         ORDER BY counted DESC, installs DESC, c.created_at DESC, c.code LIMIT ?`,
     ).all(...params);
@@ -128,6 +142,7 @@ export class ReferralStore {
       code: c.code,
       email: c.email,
       createdAt: c.created_at,
+      premiumGrantedAt: c.premium_granted_at,
       totalInstalls: c.installs,
       countedInstalls: c.counted,
       installs: installs.all(c.code).map((i) => ({
@@ -139,6 +154,19 @@ export class ReferralStore {
         counted: i.source === COUNTED_SOURCE && i.build === COUNTED_BUILD,
       })),
     }));
+  }
+
+  /**
+   * Пометка «владелец выдал Premium вручную». Атомарно и один раз: UPDATE только при NULL.
+   * 'granted' — поставили сейчас; 'already' — уже стояла (значение не трогаем); 'not_found' — кода нет.
+   */
+  grantPremium(code: string, nowMs: number): 'granted' | 'already' | 'not_found' {
+    const changed = this.q('UPDATE referral_codes SET premium_granted_at = ? WHERE code = ? AND premium_granted_at IS NULL').run(
+      nowMs,
+      code,
+    ).changes;
+    if (changed > 0) return 'granted';
+    return this.codeExists(code) ? 'already' : 'not_found';
   }
 
   installStats(): InstallStats {

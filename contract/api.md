@@ -162,5 +162,6 @@ HTTP/1.1 401 Unauthorized
 
 | Метод и путь | Что |
 |---|---|
-| `GET /admin/referrals[?qualified=1&limit=]` | `{threshold, referrals:[{code, email, created_at, counted_installs, total_installs, qualified, installs:[{device_id, ip, created_at, source, build, counted}]}]}`; `counted_installs` — уникальные устройства с `source=play` и `build=play`, `total_installs` — все установки по коду, `qualified = counted_installs >= REFERRAL_THRESHOLD`; `?qualified=1` — только достигшие порога (другое значение — 400); `device_id` — HMAC-хеш |
+| `GET /admin/referrals[?qualified=1&limit=]` | `{threshold, referrals:[{code, email, created_at, counted_installs, total_installs, qualified, premium_granted_at (ISO или null), installs:[{device_id, ip, created_at, source, build, counted}]}]}`; `counted_installs` — уникальные устройства с `source=play` и `build=play`, `total_installs` — все установки по коду, `qualified = counted_installs >= REFERRAL_THRESHOLD`; `?qualified=1` — только достигшие порога (другое значение — 400); `device_id` — HMAC-хеш |
+| `POST /admin/referrals/:code/grant` | без тела → `{referral:{…как в списке…, premium_granted_at}}`: владелец помечает, что вручную выдал Premium. Идемпотентно по смыслу: повтор — 409 `conflict` (дата не меняется), неизвестный код — 404. Порог не проверяется |
 | `GET /admin/installs/stats` | `{total, with_ref_code, by_day:[{day,count}], by_source:[…], by_build:[…]}` |

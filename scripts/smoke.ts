@@ -292,6 +292,15 @@ async function main(): Promise<number> {
       return { ok: stats.total === 4, detail: `stats.total=${String(stats.total)}` };
     });
 
+    await scenario('POST /admin/referrals/:code/grant → 200, повтор → 409, дата в списке', async () => {
+      const first = await fetch(`${BASE}/admin/referrals/${refCode}/grant`, { method: 'POST', headers: adminHeaders });
+      const again = await fetch(`${BASE}/admin/referrals/${refCode}/grant`, { method: 'POST', headers: adminHeaders });
+      const refs = (await (await fetch(`${BASE}/admin/referrals`, { headers: adminHeaders })).json()) as AdminReferrals;
+      const granted = refs.referrals?.find((r) => r.code === refCode)?.premium_granted_at;
+      const ok = first.status === 200 && again.status === 409 && typeof granted === 'string';
+      return { ok, detail: `${first.status}, ${again.status}, granted=${String(granted !== null && granted !== undefined)}` };
+    });
+
     // 5. флуд с разных device id с одного IP → хотя бы один 429 с Retry-After.
     await scenario('флуд: 25 запросов с разных device id → есть 429 с Retry-After', async () => {
       const requests = Array.from({ length: 25 }, (_, i) => {

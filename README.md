@@ -102,7 +102,7 @@ HMAC-хешам device id и IP: сервер помнит «первое поя
 | `POST /v1/referral/code` | email → код и ссылка `https://<домен>/i/<код>` (один email — один код, владение email не подтверждается) |
 | `POST /v1/install` | событие первого запуска (`ref_code?`, `source`, `build`, версии, локаль) → 204, идемпотентно по deviceId |
 | `GET /i/:code` | 302 на Google Play (`PLAY_PACKAGE_ID`) с `referrer=<код>` |
-| `GET /admin/referrals`, `GET /admin/installs/stats` | админка под `Authorization: Bearer <ADMIN_TOKEN>` |
+| `GET /admin/referrals[?qualified=1]`, `POST /admin/referrals/:code/grant`, `GET /admin/installs/stats` | админка под `Authorization: Bearer <ADMIN_TOKEN>` |
 
 - **Админка выключена по умолчанию:** без `ADMIN_TOKEN` все `/admin/*` отвечают
   404. Токен — только из окружения (≥ 32 символов, `openssl rand -hex 32`),
@@ -120,11 +120,15 @@ HMAC-хешам device id и IP: сервер помнит «первое поя
   по каждому коду email, `counted_installs`, `total_installs`, `qualified` и
   список установок (device id-хеш, IP, время, источник, сборка);
   `?qualified=1` оставляет только достигшие порога. Сам Premium по-прежнему
-  выдаёт владелец вручную.
+  выдаёт владелец вручную; чтобы не потерять, кому уже выдано, он отмечает это
+  `POST /admin/referrals/<код>/grant` — ставится `premium_granted_at`
+  (в списке виден у каждого кода, пока `null` — не выдан). Повторный вызов —
+  409 `conflict`, дата не меняется. Отметка не требует порога: решение
+  остаётся за владельцем.
 - **Лимиты** — те же дневные счётчики на устройство/IP/email, значения
   обязательны в env (`LIMIT_REFERRAL_DEVICE_DAY`, `LIMIT_REFERRAL_IP_DAY`,
   `LIMIT_INSTALL_IP_DAY`).
-- **Какие данные хранятся.** `referral_codes` — email и код; `install_events` —
+- **Какие данные хранятся.** `referral_codes` — email, код и дата ручной выдачи Premium (`premium_granted_at`); `install_events` —
   HMAC-хеш device id, ref-код, источник, сборка, версии приложения/ОС, локаль,
   время и **IP клиента**.
   IP собирается для защиты от накрутки и проверки реферальных установок —

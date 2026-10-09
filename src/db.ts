@@ -50,7 +50,9 @@ function ensureSchema(db: Database): void {
     CREATE TABLE IF NOT EXISTS referral_codes (
       code TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
-      created_at INTEGER NOT NULL
+      created_at INTEGER NOT NULL,
+      -- Когда владелец вручную выдал Premium за этого реферера (NULL — ещё нет).
+      premium_granted_at INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS install_events (
@@ -72,4 +74,11 @@ function ensureSchema(db: Database): void {
     -- Фича «Premium за пост» убрана (решение владельца): таблицу из первой версии ветки сносим.
     DROP TABLE IF EXISTS post_claims;
   `);
+  addColumnIfMissing(db, 'referral_codes', 'premium_granted_at', 'INTEGER');
+}
+
+/** Миграция для БД, созданных первой версией ветки (до появления колонки). */
+function addColumnIfMissing(db: Database, table: string, column: string, type: string): void {
+  const columns = db.query<{ name: string }, []>(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
 }

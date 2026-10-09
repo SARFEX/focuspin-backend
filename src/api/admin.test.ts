@@ -19,6 +19,7 @@ const INSTALL = { source: 'play_organic', build: 'play', app_version: '1.0.0', o
 const ADMIN_PATHS: Array<[string, string]> = [
   ['GET', '/admin/referrals'],
   ['GET', '/admin/installs/stats'],
+  ['POST', '/admin/referrals/7K2QX9M4VBD0T3HN/grant'],
 ];
 
 describe('админка: авторизация', () => {
@@ -51,6 +52,7 @@ describe('админка: авторизация', () => {
   test('верный токен, неверный метод → 405; неизвестный /admin/x → 404', async () => {
     await withRefApp(ENV, async (app) => {
       expect((await admin(app, '/admin/referrals', { method: 'POST', body: {} })).status).toBe(405);
+      expect((await admin(app, '/admin/referrals/7K2QX9M4VBD0T3HN/grant')).status).toBe(405);
       expect((await admin(app, '/admin/nope')).status).toBe(404);
     });
   });
@@ -186,6 +188,67 @@ describe('GET /admin/referrals', () => {
       for (const bad of ['0', '-1', 'x', '1.5', '999999']) {
         expect((await admin(app, `/admin/referrals?limit=${bad}`)).status).toBe(400);
       }
+    });
+  });
+});
+
+describe('POST /admin/referrals/:code/grant', () => {
+  const grantPath = (code: string): string => `/admin/referrals/${code}/grant`;
+
+  test('ставит premium_granted_at; в списке виден; у остальных кодов null', async () => {
+    await withRefApp(ENV, async (app) => {
+      const code = await newCode(app, 'a@example.com');
+      const other = await newCode(app, 'b@example.com');
+      await installs(app, code, 3, 1);
+      const before = Date.now();
+      const res = await admin(app, grantPath(code), { method: 'POST' });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      const { referral } = (await res.json()) as { referral: { code: string; premium_granted_at: string; qualified: boolean; counted_installs: number } };
+      expect(referral.code).toBe(code);
+      expect(referral.qualified).toBe(true);
+      expect(referral.counted_installs).toBe(3);
+      expect(Date.parse(referral.premium_granted_at)).toBeGreaterThanOrEqual(before - 1000);
+
+      const list = (await (await admin(app, '/admin/referrals')).json()) as { referrals: Array<{ code: string; premium_granted_at: string | null }> };
+      expect(list.referrals.find((r) => r.code === code)?.premium_granted_at).toBe(referral.premium_granted_at);
+      expect(list.referrals.find((r) => r.code === other)?.premium_granted_at).toBeNull();
+    });
+  });
+
+  test('повтор → 409 conflict, дата не меняется; код в нижнем регистре тот же', async () => {
+    await withRefApp(ENV, async (app) => {
+      const code = await newCode(app, 'a@example.com');
+      expect((await admin(app, grantPath(code), { method: 'POST' })).status).toBe(200);
+      const stored = app.db.query<{ at: number }, []>('SELECT premium_granted_at AS at FROM referral_codes').get()?.at;
+      await Bun.sleep(5);
+      for (const variant of [code, code.toLowerCase()]) {
+        const again = await admin(app, grantPath(variant), { method: 'POST' });
+        expect(again.status).toBe(409);
+        expect(((await again.json()) as { error: { code: string } }).error.code).toBe('conflict');
+      }
+      expect(app.db.query<{ at: number }, []>('SELECT premium_granted_at AS at FROM referral_codes').get()?.at).toBe(stored ?? -1);
+    });
+  });
+
+  test('не требует порога: можно отметить и ниже REFERRAL_THRESHOLD (qualified=false в ответе)', async () => {
+    await withRefApp(ENV, async (app) => {
+      const code = await newCode(app, 'a@example.com');
+      const res = await admin(app, grantPath(code), { method: 'POST' });
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { referral: { qualified: boolean } }).referral.qualified).toBe(false);
+    });
+  });
+
+  test('неизвестный/битый код → 404; без токена → 401; GET → 405', async () => {
+    await withRefApp(ENV, async (app) => {
+      const code = await newCode(app, 'a@example.com');
+      for (const bad of ['0000000000000000', 'short', 'x'.repeat(40), '%E0%A4%A', '..%2F..']) {
+        expect((await admin(app, grantPath(bad), { method: 'POST' })).status).toBe(404);
+      }
+      expect((await admin(app, grantPath(code), { method: 'POST', token: null })).status).toBe(401);
+      expect((await admin(app, grantPath(code))).status).toBe(405);
+      expect(app.db.query<{ at: number | null }, []>('SELECT premium_granted_at AS at FROM referral_codes').get()?.at).toBeNull();
     });
   });
 });

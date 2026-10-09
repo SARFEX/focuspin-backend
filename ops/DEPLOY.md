@@ -93,7 +93,7 @@
 | `ADMIN_TOKEN` | `openssl rand -hex 32` | токен `/admin/*` (`Authorization: Bearer …`), ≥ 32 символов. **Не задан — админка выключена (404).** Только в `.env`/окружении сервера, не в git |
 
 Админка: `curl -H "Authorization: Bearer $ADMIN_TOKEN" https://<домен>/admin/referrals`
-(также `/admin/referrals?qualified=1` — коды, достигшие порога, и `/admin/installs/stats`). Выдача самого Premium остаётся ручной.
+(также `/admin/referrals?qualified=1` — коды, достигшие порога, и `/admin/installs/stats`). Отметить, что Premium выдан: `curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" https://<домен>/admin/referrals/<код>/grant` (повтор — 409). Колонка `premium_granted_at` добавляется в существующую БД автоматически при старте. Выдача самого Premium остаётся ручной.
 
 **Персональные данные.** Для защиты от накрутки сервер сохраняет IP клиента при
 первой установке и email из реферальных кодов. Это нужно отразить в

@@ -1,4 +1,8 @@
+import { Database } from 'bun:sqlite';
 import { describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { openDb } from '../db.ts';
 import { HttpError } from '../errors.ts';
 import { DAY_MS } from '../util/time.ts';
@@ -225,6 +229,43 @@ describe('засчитанные друзья (counted)', () => {
     expect(store.adminReferrals({ limit: 10, minCounted: 2 })).toHaveLength(2);
     expect(store.adminReferrals({ limit: 1, minCounted: 2 })).toHaveLength(1);
     expect(store.adminReferrals({ limit: 10, minCounted: 4 })).toHaveLength(0);
+  });
+});
+
+describe('grantPremium и схема', () => {
+  test('grantPremium: один раз; повтор — already с прежней датой; нет кода — not_found', () => {
+    const store = new ReferralStore(openDb(':memory:'));
+    const code = store.getOrCreateCode('a@x.com', T0);
+    expect(store.adminReferrals({ limit: 1 })[0]?.premiumGrantedAt).toBeNull();
+    expect(store.grantPremium(code, T0 + 5)).toBe('granted');
+    expect(store.grantPremium(code, T0 + 99)).toBe('already');
+    expect(store.adminReferrals({ limit: 1 })[0]?.premiumGrantedAt).toBe(T0 + 5);
+    expect(store.grantPremium('Z'.repeat(16), T0)).toBe('not_found');
+  });
+
+  test('миграция: БД первой версии (без premium_granted_at, с post_claims) открывается, данные целы', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'focuspin-mig-'));
+    const path = join(dir, 'old.db');
+    try {
+      const old = new Database(path, { create: true });
+      old.exec(`
+        CREATE TABLE referral_codes (code TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
+        CREATE TABLE post_claims (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL);
+        INSERT INTO referral_codes VALUES ('OLDCODE000000000', 'old@x.com', 1);
+      `);
+      old.close();
+      const db = openDb(path);
+      const store = new ReferralStore(db);
+      const [row] = store.adminReferrals({ limit: 5 });
+      expect(row?.email).toBe('old@x.com');
+      expect(row?.premiumGrantedAt).toBeNull();
+      expect(store.grantPremium('OLDCODE000000000', T0)).toBe('granted');
+      expect(db.query<{ name: string }, []>("SELECT name FROM sqlite_master WHERE name = 'post_claims'").get()).toBeNull();
+      db.close();
+      openDb(path).close(); // повторное открытие идемпотентно
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
