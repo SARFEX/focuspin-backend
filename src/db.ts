@@ -44,5 +44,41 @@ function ensureSchema(db: Database): void {
       completion_tokens INTEGER NOT NULL DEFAULT 0,
       contract_fails INTEGER NOT NULL DEFAULT 0
     );
+
+    -- Рефералы и статистика установок. email и ip здесь — сырые (осознанное исключение
+    -- из HMAC-only, см. AGENTS.md); device_id — по-прежнему HMAC-хеш.
+    CREATE TABLE IF NOT EXISTS referral_codes (
+      code TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS install_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      device_id TEXT NOT NULL UNIQUE,
+      ref_code TEXT,
+      source TEXT NOT NULL,
+      build TEXT NOT NULL,
+      app_version TEXT NOT NULL,
+      os_version TEXT NOT NULL,
+      locale TEXT NOT NULL,
+      ip TEXT,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_install_events_ref ON install_events (ref_code);
+    CREATE INDEX IF NOT EXISTS idx_install_events_created ON install_events (created_at);
+
+    CREATE TABLE IF NOT EXISTS post_claims (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      url TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'approved', 'rejected', 'revoked')),
+      created_at INTEGER NOT NULL,
+      checked_at INTEGER,
+      premium_until INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_post_claims_status ON post_claims (status);
   `);
 }
