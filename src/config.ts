@@ -31,6 +31,8 @@ export interface ReferralConfig {
   adminToken: string;
   /** Через сколько суток IP в install_events обнуляется. */
   ipRetentionDays: number;
+  /** Сколько засчитанных друзей (установки из Google Play по коду) нужно для Premium; решение владельца, без дефолта. */
+  threshold: number;
 }
 
 export interface Config {
@@ -203,6 +205,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
       adminToken: readAdminToken(env),
       // Срок хранения IP — решение оператора (персональные данные), поэтому без дефолта в коде.
       ipRetentionDays: readRequiredInt(env, 'IP_RETENTION_DAYS'),
+      // Порог награды — решение владельца, поэтому тоже без дефолта в коде.
+      threshold: readRequiredInt(env, 'REFERRAL_THRESHOLD'),
     },
   };
 }

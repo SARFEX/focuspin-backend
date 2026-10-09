@@ -49,6 +49,7 @@ const BASE_ENV: Record<string, string> = {
   LIMIT_REFERRAL_IP_DAY: '1000',
   LIMIT_INSTALL_IP_DAY: '1000',
   IP_RETENTION_DAYS: '90',
+  REFERRAL_THRESHOLD: '3',
 };
 
 export interface RefApp {

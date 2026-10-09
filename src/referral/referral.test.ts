@@ -146,13 +146,13 @@ describe('ReferralStore', () => {
     const store = new ReferralStore(openDb(':memory:'));
     const a = store.getOrCreateCode('a@x.com', T0);
     const b = store.getOrCreateCode('b@x.com', T0);
-    store.insertInstall(install({ deviceId: '1'.repeat(64), refCode: a, source: 'play_referral' }), T0);
+    store.insertInstall(install({ deviceId: '1'.repeat(64), refCode: a, source: 'play' }), T0);
     store.insertInstall(install({ deviceId: '2'.repeat(64), refCode: a, source: 'play_referral' }), T0 + 1000);
     store.insertInstall(install({ deviceId: '3'.repeat(64), build: 'full', source: 'direct' }), T0 + DAY_MS);
-    const rows = store.adminReferrals(100);
-    expect(rows.map((r) => [r.code, r.installsCount])).toEqual([
-      [a, 2],
-      [b, 0],
+    const rows = store.adminReferrals({ limit: 100 });
+    expect(rows.map((r) => [r.code, r.countedInstalls, r.totalInstalls])).toEqual([
+      [a, 1, 2],
+      [b, 0, 0],
     ]);
     expect(rows[0]?.installs.map((i) => i.deviceId)).toEqual(['1'.repeat(64), '2'.repeat(64)]);
     const stats = store.installStats();
@@ -163,13 +163,68 @@ describe('ReferralStore', () => {
       { day: '2026-10-05', count: 1 },
     ]);
     expect(stats.bySource).toEqual([
-      { source: 'play_referral', count: 2 },
       { source: 'direct', count: 1 },
+      { source: 'play', count: 1 },
+      { source: 'play_referral', count: 1 },
     ]);
     expect(stats.byBuild).toEqual([
       { build: 'play', count: 2 },
       { build: 'full', count: 1 },
     ]);
+  });
+});
+
+describe('засчитанные друзья (counted)', () => {
+  const dev = (n: number) => String(n).padStart(64, '0');
+
+  test('считаются только source=play и build=play с ref_code; full, прочие источники и без кода — нет', () => {
+    const store = new ReferralStore(openDb(':memory:'));
+    const a = store.getOrCreateCode('a@x.com', T0);
+    store.insertInstall(install({ deviceId: dev(1), refCode: a, source: 'play', build: 'play' }), T0);
+    store.insertInstall(install({ deviceId: dev(2), refCode: a, source: 'play', build: 'full' }), T0 + 1);
+    store.insertInstall(install({ deviceId: dev(3), refCode: a, source: 'manual', build: 'play' }), T0 + 2);
+    store.insertInstall(install({ deviceId: dev(4), refCode: a, source: 'play_referral', build: 'play' }), T0 + 3);
+    store.insertInstall(install({ deviceId: dev(5), refCode: null, source: 'play', build: 'play' }), T0 + 4);
+    const [row] = store.adminReferrals({ limit: 10 });
+    expect(row?.countedInstalls).toBe(1);
+    expect(row?.totalInstalls).toBe(4);
+    expect(row?.installs.map((i) => i.counted)).toEqual([true, false, false, false]);
+  });
+
+  test('одно устройство — один зачёт: повторный install (и под другим кодом) не прибавляет', () => {
+    const store = new ReferralStore(openDb(':memory:'));
+    const a = store.getOrCreateCode('a@x.com', T0);
+    const b = store.getOrCreateCode('b@x.com', T0);
+    expect(store.insertInstall(install({ deviceId: dev(1), refCode: a, source: 'play' }), T0)).toBe(true);
+    expect(store.insertInstall(install({ deviceId: dev(1), refCode: a, source: 'play' }), T0 + 1)).toBe(false);
+    expect(store.insertInstall(install({ deviceId: dev(1), refCode: b, source: 'play' }), T0 + 2)).toBe(false);
+    const rows = store.adminReferrals({ limit: 10 });
+    expect(rows.find((r) => r.code === a)?.countedInstalls).toBe(1);
+    expect(rows.find((r) => r.code === b)?.countedInstalls).toBe(0);
+  });
+
+  test('minCounted: порог включительно, фильтр до limit; сортировка по засчитанным', () => {
+    const store = new ReferralStore(openDb(':memory:'));
+    const codes = ['a', 'b', 'c'].map((n) => store.getOrCreateCode(`${n}@x.com`, T0));
+    let n = 0;
+    const add = (code: string, count: number, source = 'play') => {
+      for (let k = 0; k < count; k += 1) {
+        n += 1;
+        store.insertInstall(install({ deviceId: dev(n), refCode: code, source }), T0 + n);
+      }
+    };
+    add(codes[0] as string, 2);
+    add(codes[1] as string, 3);
+    add(codes[2] as string, 5, 'direct'); // много установок, но ни одной засчитанной
+    expect(store.adminReferrals({ limit: 10 }).map((r) => [r.countedInstalls, r.totalInstalls])).toEqual([
+      [3, 3],
+      [2, 2],
+      [0, 5],
+    ]);
+    expect(store.adminReferrals({ limit: 10, minCounted: 3 }).map((r) => r.code)).toEqual([codes[1] as string]);
+    expect(store.adminReferrals({ limit: 10, minCounted: 2 })).toHaveLength(2);
+    expect(store.adminReferrals({ limit: 1, minCounted: 2 })).toHaveLength(1);
+    expect(store.adminReferrals({ limit: 10, minCounted: 4 })).toHaveLength(0);
   });
 });
 

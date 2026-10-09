@@ -22,6 +22,7 @@ const BASE_ENV: Record<string, string> = {
   LIMIT_REFERRAL_IP_DAY: '30',
   LIMIT_INSTALL_IP_DAY: '200',
   IP_RETENTION_DAYS: '90',
+  REFERRAL_THRESHOLD: '3',
 };
 
 describe('config: рефералы и установки', () => {
@@ -31,6 +32,7 @@ describe('config: рефералы и установки', () => {
     expect(config.referral.adminToken).toBe('');
     expect(config.referral.publicBaseUrl).toBe('');
     expect(config.referral.ipRetentionDays).toBe(90);
+    expect(config.referral.threshold).toBe(3);
     expect(config.limits.referralDeviceDay).toBe(10);
   });
 
@@ -39,6 +41,7 @@ describe('config: рефералы и установки', () => {
     'LIMIT_REFERRAL_IP_DAY',
     'LIMIT_INSTALL_IP_DAY',
     'IP_RETENTION_DAYS',
+    'REFERRAL_THRESHOLD',
   ])('%s обязателен: без значения конфиг не собирается', (name) => {
     const env = { ...BASE_ENV };
     delete env[name];

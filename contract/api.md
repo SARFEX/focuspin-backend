@@ -137,7 +137,7 @@ HTTP/1.1 401 Unauthorized
 
 ```
 {"ref_code": "7K2QX9M4VBD0T3HN",   // необязательно; неизвестный/битый код не ошибка (сохраняется NULL)
- "source": "play_referral",        // [a-z0-9_]{1,32}, например play_referral | play_organic
+ "source": "play",                 // [a-z0-9_]{1,32}; с referrer из Google Play — play (засчитывается), без кода — например play_organic
  "build": "play",                  // play | full
  "app_version": "1.2.3",           // ≤ 32 символа
  "os_version": "Android 14",       // ≤ 64 символа
@@ -145,7 +145,8 @@ HTTP/1.1 401 Unauthorized
 → 204
 ```
 
-Идемпотентно по deviceId: первая запись побеждает, повтор игнорируется (тоже 204).
+Идемпотентно по deviceId: первая запись побеждает, повтор игнорируется (тоже 204). Один друг
+= одно устройство: засчитывается установка с известным `ref_code`, `source=play` и `build=play`.
 Сервер сохраняет IP клиента (для проверки накрутки, срок хранения — `IP_RETENTION_DAYS`).
 
 ### GET /i/:code
@@ -161,5 +162,5 @@ HTTP/1.1 401 Unauthorized
 
 | Метод и путь | Что |
 |---|---|
-| `GET /admin/referrals[?limit=]` | `{referrals:[{code, email, created_at, installs_count, installs:[{device_id, ip, created_at}]}]}`; `device_id` — HMAC-хеш |
+| `GET /admin/referrals[?qualified=1&limit=]` | `{threshold, referrals:[{code, email, created_at, counted_installs, total_installs, qualified, installs:[{device_id, ip, created_at, source, build, counted}]}]}`; `counted_installs` — уникальные устройства с `source=play` и `build=play`, `total_installs` — все установки по коду, `qualified = counted_installs >= REFERRAL_THRESHOLD`; `?qualified=1` — только достигшие порога (другое значение — 400); `device_id` — HMAC-хеш |
 | `GET /admin/installs/stats` | `{total, with_ref_code, by_day:[{day,count}], by_source:[…], by_build:[…]}` |

@@ -15,12 +15,32 @@ export interface InstallRow {
   ip: string | null;
 }
 
+/** Засчитанный друг: установка по коду с source=play и build=play (не full/ручная/органика). */
+export const COUNTED_SOURCE = 'play';
+export const COUNTED_BUILD = 'play';
+
 export interface ReferralAdminRow {
   code: string;
   email: string;
   createdAt: number;
-  installsCount: number;
-  installs: Array<{ deviceId: string; ip: string | null; createdAt: number }>;
+  /** Все установки с этим кодом (любой источник и сборка). */
+  totalInstalls: number;
+  /** Засчитанные: уникальные устройства с source=play и build=play (device_id UNIQUE — одно устройство один раз). */
+  countedInstalls: number;
+  installs: Array<{
+    deviceId: string;
+    ip: string | null;
+    createdAt: number;
+    source: string;
+    build: string;
+    counted: boolean;
+  }>;
+}
+
+export interface AdminReferralsQuery {
+  limit: number;
+  /** Если задан — только коды, у которых засчитанных установок не меньше порога (REFERRAL_THRESHOLD). */
+  minCounted?: number;
 }
 
 export interface InstallStats {
@@ -81,24 +101,43 @@ export class ReferralStore {
     return this.q('UPDATE install_events SET ip = NULL WHERE ip IS NOT NULL AND created_at < ?').run(cutoff).changes;
   }
 
-  /** Коды с числом установок и списком установок (device, ip, время). Сначала самые результативные. */
-  adminReferrals(limit: number): ReferralAdminRow[] {
-    const codes = this.q<{ code: string; email: string; created_at: number; installs: number }>(
-      `SELECT c.code, c.email, c.created_at, COUNT(i.id) AS installs
+  /**
+   * Коды со счётчиками и списком установок (device, ip, время, источник, сборка). Сначала самые
+   * результативные по засчитанным. minCounted отсекает коды ниже порога до применения limit.
+   */
+  adminReferrals(query: AdminReferralsQuery): ReferralAdminRow[] {
+    const having = query.minCounted === undefined ? '' : 'HAVING counted >= ?';
+    const params: SQLQueryBindings[] = [COUNTED_SOURCE, COUNTED_BUILD];
+    if (query.minCounted !== undefined) params.push(query.minCounted);
+    params.push(query.limit);
+    const codes = this.q<{ code: string; email: string; created_at: number; installs: number; counted: number }>(
+      `SELECT c.code, c.email, c.created_at, COUNT(i.id) AS installs,
+              COALESCE(SUM(CASE WHEN i.source = ? AND i.build = ? THEN 1 ELSE 0 END), 0) AS counted
          FROM referral_codes c LEFT JOIN install_events i ON i.ref_code = c.code
-        GROUP BY c.code ORDER BY installs DESC, c.created_at DESC LIMIT ?`,
-    ).all(limit);
-    const installs = this.q<{ ref_code: string; device_id: string; ip: string | null; created_at: number }>(
-      'SELECT ref_code, device_id, ip, created_at FROM install_events WHERE ref_code = ? ORDER BY created_at ASC',
-    );
+        GROUP BY c.code ${having}
+        ORDER BY counted DESC, installs DESC, c.created_at DESC, c.code LIMIT ?`,
+    ).all(...params);
+    const installs = this.q<{
+      device_id: string;
+      ip: string | null;
+      created_at: number;
+      source: string;
+      build: string;
+    }>('SELECT device_id, ip, created_at, source, build FROM install_events WHERE ref_code = ? ORDER BY created_at ASC, id ASC');
     return codes.map((c) => ({
       code: c.code,
       email: c.email,
       createdAt: c.created_at,
-      installsCount: c.installs,
-      installs: installs
-        .all(c.code)
-        .map((i) => ({ deviceId: i.device_id, ip: i.ip, createdAt: i.created_at })),
+      totalInstalls: c.installs,
+      countedInstalls: c.counted,
+      installs: installs.all(c.code).map((i) => ({
+        deviceId: i.device_id,
+        ip: i.ip,
+        createdAt: i.created_at,
+        source: i.source,
+        build: i.build,
+        counted: i.source === COUNTED_SOURCE && i.build === COUNTED_BUILD,
+      })),
     }));
   }
 

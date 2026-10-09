@@ -77,7 +77,7 @@
 ### Рефералы, статистика установок, админка
 
 Новые переменные (подробности — README «Рефералы и статистика установок»).
-`LIMIT_*` и `IP_RETENTION_DAYS` обязательны, дефолтов в коде нет: **при обновлении
+`LIMIT_*`, `IP_RETENTION_DAYS` и `REFERRAL_THRESHOLD` обязательны, дефолтов в коде нет: **при обновлении
 с прежней версии без них сервер не стартует** — добавьте их в `.env`/
 `/etc/focuspin-backend.env` до перезапуска.
 
@@ -87,12 +87,13 @@
 | `LIMIT_REFERRAL_IP_DAY` | `30` | то же на IP |
 | `LIMIT_INSTALL_IP_DAY` | `200` | `POST /v1/install` с одного IP за сутки; за мобильным NAT установок с одного адреса много — не занижайте |
 | `IP_RETENTION_DAYS` | `90` | через сколько суток `install_events.ip` обнуляется (чистка на старте и раз в час) |
+| `REFERRAL_THRESHOLD` | `3` | сколько засчитанных друзей (установки из Google Play по коду: `source=play`, `build=play`, уникальное устройство) нужно для Premium; **обязательна**, дефолта нет. Админка показывает `qualified` |
 | `PUBLIC_BASE_URL` | `https://api.focuspin.app` | https-origin для реферальной ссылки `…/i/<код>`; в production обязателен |
 | `PLAY_PACKAGE_ID` | `dev.sarfex.focuspin` (дефолт) | пакет в Google Play для редиректа `/i/<код>` |
 | `ADMIN_TOKEN` | `openssl rand -hex 32` | токен `/admin/*` (`Authorization: Bearer …`), ≥ 32 символов. **Не задан — админка выключена (404).** Только в `.env`/окружении сервера, не в git |
 
 Админка: `curl -H "Authorization: Bearer $ADMIN_TOKEN" https://<домен>/admin/referrals`
-(также `/admin/installs/stats`). Выдача самого Premium остаётся ручной.
+(также `/admin/referrals?qualified=1` — коды, достигшие порога, и `/admin/installs/stats`). Выдача самого Premium остаётся ручной.
 
 **Персональные данные.** Для защиты от накрутки сервер сохраняет IP клиента при
 первой установке и email из реферальных кодов. Это нужно отразить в

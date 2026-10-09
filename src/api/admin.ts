@@ -8,7 +8,8 @@ import { hmacHex } from '../util/hmac.ts';
 /**
  * Админ-эндпоинты (ручной разбор рефералов и статистика установок), все под
  * `Authorization: Bearer <ADMIN_TOKEN>`:
- *   GET  /admin/referrals           — по коду: email, число установок, список (device_id, ip, время)
+ *   GET  /admin/referrals[?qualified=1&limit=] — по коду: email, counted_installs (засчитанные: source=play, build=play),
+ *                                   total_installs, qualified (counted ≥ REFERRAL_THRESHOLD), список (device_id, ip, время)
  *   GET  /admin/installs/stats      — установки по дням, источникам и сборкам
  * ADMIN_TOKEN не задан — админка выключена: все /admin/* отвечают как неизвестный путь (404).
  * Токен сравнивается в постоянное время (HMAC обеих сторон + timingSafeEqual) и нигде не логируется.
@@ -34,7 +35,7 @@ export async function handleAdminRequest(request: Request, url: URL, deps: AppDe
     const store = new ReferralStore(deps.db);
     let response: Response;
     if (route === REFERRALS_PATH) {
-      response = referrals(store, url);
+      response = referrals(store, url, deps.config.referral.threshold);
     } else {
       response = stats(store);
     }
@@ -74,15 +75,35 @@ function iso(ms: number | null): string | null {
   return ms === null ? null : new Date(ms).toISOString();
 }
 
-function referrals(store: ReferralStore, url: URL): Response {
-  const rows = store.adminReferrals(parseLimit(url));
+/** ?qualified=1 — только коды, достигшие порога REFERRAL_THRESHOLD; другое значение — 400. */
+function parseQualified(url: URL): boolean {
+  const raw = url.searchParams.get('qualified');
+  if (raw === null) return false;
+  if (raw !== '1') throw new HttpError('invalid_request', 'qualified: только 1.');
+  return true;
+}
+
+function referrals(store: ReferralStore, url: URL, threshold: number): Response {
+  const limit = parseLimit(url);
+  const qualifiedOnly = parseQualified(url);
+  const rows = store.adminReferrals({ limit, minCounted: qualifiedOnly ? threshold : undefined });
   return Response.json({
+    threshold,
     referrals: rows.map((r) => ({
       code: r.code,
       email: r.email,
       created_at: iso(r.createdAt),
-      installs_count: r.installsCount,
-      installs: r.installs.map((i) => ({ device_id: i.deviceId, ip: i.ip, created_at: iso(i.createdAt) })),
+      counted_installs: r.countedInstalls,
+      total_installs: r.totalInstalls,
+      qualified: r.countedInstalls >= threshold,
+      installs: r.installs.map((i) => ({
+        device_id: i.deviceId,
+        ip: i.ip,
+        created_at: iso(i.createdAt),
+        source: i.source,
+        build: i.build,
+        counted: i.counted,
+      })),
     })),
   });
 }
