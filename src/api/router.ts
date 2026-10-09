@@ -1,19 +1,18 @@
 import type { Config } from '../config.ts';
 import { HttpError } from '../errors.ts';
-import { deriveIdentity, validateFocuspinDeviceId } from '../identity/device.ts';
+import { deriveIdentity } from '../identity/device.ts';
 import type { MagicOutput } from '../llm/pipeline.ts';
 import type { RateVerdict } from '../limiter/limiter.ts';
 import type { AppDeps, RequestContext } from '../types.ts';
+import { authenticate, resolveClientIp } from './common.ts';
 
 /** The only production route; everything else returns undefined -> server's 404. */
 const MAGIC_PATH = '/v1/chat/completions';
-const BEARER_PREFIX = 'Bearer ';
 const CONTRACT_HEADER = 'commands-v4';
 
 // User-facing strings (Russian).
 const RATE_LIMITED_MESSAGE = 'Лимит бесплатного сервера исчерпан — попробуйте позже.';
 const BUSY_MESSAGE = 'Сервер занят, попробуйте ещё раз через пару секунд.';
-const UNAUTHORIZED_MESSAGE = 'Требуется заголовок Authorization: Bearer с идентификатором устройства.';
 const BODY_NOT_OBJECT_MESSAGE = 'Тело запроса должно быть JSON-объектом.';
 const TWO_MESSAGES_MESSAGE = 'Ровно два сообщения: system и user.';
 const MESSAGE_SHAPE_MESSAGE = 'Каждое сообщение должно быть объектом с role и непустым content.';
@@ -92,30 +91,6 @@ async function handleMagic(request: Request, deps: AppDeps, ctx: RequestContext)
   deps.limiter.recordSuccess(identity, output.promptTokens, output.completionTokens);
   deps.state.inc('magic_ok');
   return magicResponse(output, body.requestedModel, verdict, deps.config);
-}
-
-/** Scheme "Bearer " is case-sensitive; the rest must be a valid focuspin device id. */
-function authenticate(request: Request, deps: AppDeps): string {
-  const header = request.headers.get('authorization') ?? '';
-  const deviceId = validateFocuspinDeviceId(header.startsWith(BEARER_PREFIX) ? header.slice(BEARER_PREFIX.length) : '');
-  if (deviceId === null) {
-    deps.state.inc('auth_fail');
-    throw new HttpError('unauthorized', UNAUTHORIZED_MESSAGE);
-  }
-  return deviceId;
-}
-
-/** Behind our own reverse proxy the client ip is the last XFF entry; otherwise the socket ip. */
-function resolveClientIp(trustProxy: boolean, forwardedFor: string | null, socketIp: string): string {
-  if (trustProxy) {
-    const header = forwardedFor?.trim() ?? '';
-    if (header !== '') {
-      const entries = header.split(',');
-      const last = entries[entries.length - 1]?.trim() ?? '';
-      if (last !== '') return last;
-    }
-  }
-  return socketIp !== '' ? socketIp : 'unknown';
 }
 
 interface MagicBody {
