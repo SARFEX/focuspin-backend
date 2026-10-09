@@ -5,6 +5,7 @@ import type { MagicOutput } from '../llm/pipeline.ts';
 import type { RateVerdict } from '../limiter/limiter.ts';
 import type { AppDeps, RequestContext } from '../types.ts';
 import { authenticate, resolveClientIp } from './common.ts';
+import { handleReferralRequest } from './referral.ts';
 
 /** The only production route; everything else returns undefined -> server's 404. */
 const MAGIC_PATH = '/v1/chat/completions';
@@ -18,8 +19,9 @@ const TWO_MESSAGES_MESSAGE = 'Ровно два сообщения: system и us
 const MESSAGE_SHAPE_MESSAGE = 'Каждое сообщение должно быть объектом с role и непустым content.';
 
 /**
- * Роутер API. Обрабатывает POST /v1/chat/completions; всё остальное возвращает
- * undefined — server.ts отдаст 404. Порядок magic-запроса: 405 -> global inflight ->
+ * Роутер API. Реферальные пути (/v1/referral/code, /v1/install, /v1/post-claim, /i/:code —
+ * см. api/referral.ts) отдаёт соответствующему модулю. Обрабатывает POST /v1/chat/completions;
+ * всё остальное возвращает undefined — server.ts отдаст 404. Порядок magic-запроса: 405 -> global inflight ->
  * auth (Bearer deviceId) -> client ip -> парсинг и структурная валидация тела ->
  * limiter.beginRequest -> pipeline.run (при contract_violation роутер сам зовёт
  * limiter.recordContractFail) -> recordSuccess -> OpenAI-совместимый ответ с
@@ -31,6 +33,8 @@ export async function handleRequest(
   deps: AppDeps,
   ctx: RequestContext,
 ): Promise<Response | undefined> {
+  const referral = await handleReferralRequest(request, url, deps, ctx);
+  if (referral !== undefined) return referral;
   if (url.pathname !== MAGIC_PATH) return undefined;
   const startedAtMs = performance.now();
 
