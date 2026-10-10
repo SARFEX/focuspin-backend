@@ -13,6 +13,9 @@ const SERVER_PORT = 8911;
 const BASE = `http://127.0.0.1:${SERVER_PORT}`;
 const DEVICE = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_1';
 const CONTRACT_HEADER = 'commands-v4';
+// Одноразовый токен админки на время прогона — нигде не хранится и не печатается.
+const ADMIN_TOKEN = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll('-', '');
+const DEVICE_REF = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb_1';
 
 interface Check {
   ok: boolean;
@@ -100,6 +103,13 @@ async function main(): Promise<number> {
       LIMIT_FRESH_DEVICE_HOURS: '24',
       LIMIT_FRESH_DEVICE_DAY: '15',
       LIMIT_CONTRACT_FAILS_PER_HOUR: '10',
+      LIMIT_REFERRAL_DEVICE_DAY: '10',
+      LIMIT_REFERRAL_IP_DAY: '30',
+      LIMIT_INSTALL_IP_DAY: '200',
+      IP_RETENTION_DAYS: '90',
+      REFERRAL_THRESHOLD: '3',
+      ADMIN_TOKEN,
+      PUBLIC_BASE_URL: BASE,
     },
     stdout: 'pipe',
     stderr: 'pipe',
@@ -219,6 +229,76 @@ async function main(): Promise<number> {
       });
       const err = await jsonError(res);
       return { ok: res.status === 400 && err.code === 'invalid_request', detail: `status=${res.status} code=${err.code}` };
+    });
+
+    // 4c. рефералы и установки: код → ссылка → редирект → install (идемпотентно) → админка (счётчики, qualified).
+    interface AdminReferrals {
+      referrals?: Array<{ code: string; counted_installs: number; total_installs: number; qualified: boolean; premium_granted_at?: string | null }>;
+    }
+    const refHeaders = { Authorization: `Bearer ${DEVICE_REF}`, 'Content-Type': 'application/json' };
+    const adminHeaders = { Authorization: `Bearer ${ADMIN_TOKEN}`, 'Content-Type': 'application/json' };
+    let refCode = '';
+    await scenario('POST /v1/referral/code → 200 {code, link}', async () => {
+      const res = await fetch(`${BASE}/v1/referral/code`, {
+        method: 'POST',
+        headers: refHeaders,
+        body: JSON.stringify({ email: 'smoke@example.com' }),
+      });
+      const decoded = (await res.json()) as { code?: unknown; link?: unknown };
+      refCode = typeof decoded.code === 'string' ? decoded.code : '';
+      const ok = res.status === 200 && /^[0-9A-Z]{16}$/.test(refCode) && decoded.link === `${BASE}/i/${refCode}`;
+      return { ok, detail: `status=${res.status} code=${refCode.slice(0, 4)}…` };
+    });
+    await scenario('GET /i/:code → 302 на Google Play с referrer', async () => {
+      const res = await fetch(`${BASE}/i/${refCode}`, { redirect: 'manual' });
+      const location = res.headers.get('location') ?? '';
+      const ok = res.status === 302 && location.startsWith('https://play.google.com/store/apps/details?id=') && location.endsWith(`&referrer=${refCode}`);
+      return { ok, detail: `status=${res.status}` };
+    });
+    const installBody = (extra: Record<string, string> = {}): string =>
+      JSON.stringify({ ref_code: refCode, source: 'play', build: 'play', app_version: '1.0.0', os_version: '14', locale: 'ru-RU', ...extra });
+    const friendHeaders = (n: number): Record<string, string> => ({
+      Authorization: `Bearer ${n.toString(16).padStart(32, '0')}`,
+      'Content-Type': 'application/json',
+    });
+    await scenario('POST /v1/install ×2 → 204 (идемпотентно по deviceId)', async () => {
+      const first = await fetch(`${BASE}/v1/install`, { method: 'POST', headers: refHeaders, body: installBody() });
+      const second = await fetch(`${BASE}/v1/install`, { method: 'POST', headers: refHeaders, body: installBody() });
+      return { ok: first.status === 204 && second.status === 204, detail: `${first.status}, ${second.status}` };
+    });
+    await scenario('админка: без токена 401; 1 засчитанный друг — ещё не qualified, ?qualified=1 пуст', async () => {
+      const denied = await fetch(`${BASE}/admin/referrals`);
+      if (denied.status !== 401) return { ok: false, detail: `без токена status=${denied.status}` };
+      const refs = (await (await fetch(`${BASE}/admin/referrals`, { headers: adminHeaders })).json()) as AdminReferrals;
+      const mine = refs.referrals?.find((r) => r.code === refCode);
+      if (mine?.counted_installs !== 1 || mine.total_installs !== 1 || mine.qualified !== false) {
+        return { ok: false, detail: `counted=${String(mine?.counted_installs)} total=${String(mine?.total_installs)} qualified=${String(mine?.qualified)}` };
+      }
+      const only = (await (await fetch(`${BASE}/admin/referrals?qualified=1`, { headers: adminHeaders })).json()) as AdminReferrals;
+      return { ok: only.referrals?.length === 0, detail: `qualified=1 → ${String(only.referrals?.length)} кодов` };
+    });
+    await scenario('ещё 2 друга из Play + 1 сборка full → counted=3, total=4, qualified, фильтр и статистика', async () => {
+      const bodies = [installBody(), installBody(), installBody({ build: 'full', source: 'direct' })];
+      for (const [k, body] of bodies.entries()) {
+        const res = await fetch(`${BASE}/v1/install`, { method: 'POST', headers: friendHeaders(k + 1), body });
+        if (res.status !== 204) return { ok: false, detail: `install #${k + 1} status=${res.status}` };
+      }
+      const refs = (await (await fetch(`${BASE}/admin/referrals?qualified=1`, { headers: adminHeaders })).json()) as AdminReferrals;
+      const mine = refs.referrals?.find((r) => r.code === refCode);
+      if (mine?.counted_installs !== 3 || mine.total_installs !== 4 || mine.qualified !== true) {
+        return { ok: false, detail: `counted=${String(mine?.counted_installs)} total=${String(mine?.total_installs)} qualified=${String(mine?.qualified)}` };
+      }
+      const stats = (await (await fetch(`${BASE}/admin/installs/stats`, { headers: adminHeaders })).json()) as { total?: number };
+      return { ok: stats.total === 4, detail: `stats.total=${String(stats.total)}` };
+    });
+
+    await scenario('POST /admin/referrals/:code/grant → 200, повтор → 409, дата в списке', async () => {
+      const first = await fetch(`${BASE}/admin/referrals/${refCode}/grant`, { method: 'POST', headers: adminHeaders });
+      const again = await fetch(`${BASE}/admin/referrals/${refCode}/grant`, { method: 'POST', headers: adminHeaders });
+      const refs = (await (await fetch(`${BASE}/admin/referrals`, { headers: adminHeaders })).json()) as AdminReferrals;
+      const granted = refs.referrals?.find((r) => r.code === refCode)?.premium_granted_at;
+      const ok = first.status === 200 && again.status === 409 && typeof granted === 'string';
+      return { ok, detail: `${first.status}, ${again.status}, granted=${String(granted !== null && granted !== undefined)}` };
     });
 
     // 5. флуд с разных device id с одного IP → хотя бы один 429 с Retry-After.

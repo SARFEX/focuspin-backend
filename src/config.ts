@@ -13,6 +13,26 @@ export interface LimitsConfig {
   freshDeviceHours: number;
   freshDeviceDay: number;
   contractFailsPerHour: number;
+  /** Публичные записывающие пути (реферальный код): на устройство / сутки, отдельно на каждый путь. */
+  referralDeviceDay: number;
+  /** То же на IP / сутки. */
+  referralIpDay: number;
+  /** POST /v1/install: запросов с одного IP / сутки (повтор того же deviceId тоже считается). */
+  installIpDay: number;
+}
+
+/** Рефералы и статистика установок. */
+export interface ReferralConfig {
+  /** Публичный origin бекенда для реферальной ссылки (https://<домен>), без хвостового «/». Пусто — origin запроса (только dev/test). */
+  publicBaseUrl: string;
+  /** Пакет приложения в Google Play для редиректа /i/:code. */
+  playPackageId: string;
+  /** Токен админ-эндпоинтов. Пусто = админка отключена (404). Никогда не логируется. */
+  adminToken: string;
+  /** Через сколько суток IP в install_events обнуляется. */
+  ipRetentionDays: number;
+  /** Сколько засчитанных друзей (установки из Google Play по коду) нужно для Premium; решение владельца, без дефолта. */
+  threshold: number;
 }
 
 export interface Config {
@@ -39,6 +59,7 @@ export interface Config {
   globalDailyRequestCap: number;
   globalDailyTokenCap: number;
   limits: LimitsConfig;
+  referral: ReferralConfig;
 }
 
 function readString(env: Record<string, string | undefined>, name: string, fallback: string): string {
@@ -79,6 +100,38 @@ function readBool(env: Record<string, string | undefined>, name: string, fallbac
   return raw.trim() === 'true' || raw.trim() === '1';
 }
 
+const PACKAGE_ID_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
+const MIN_ADMIN_TOKEN_LEN = 32;
+
+/** PUBLIC_BASE_URL: https-origin без пути; в production обязателен (иначе реферальная ссылка вела бы на внутренний адрес). */
+function readPublicBaseUrl(env: Record<string, string | undefined>, production: boolean): string {
+  const raw = readString(env, 'PUBLIC_BASE_URL', '').replace(/\/+$/, '');
+  if (raw === '') {
+    if (production) throw new Error('Config: PUBLIC_BASE_URL is required in production (https://<домен>)');
+    return '';
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error(`Config: PUBLIC_BASE_URL must be an absolute URL, got "${raw}"`);
+  }
+  const httpsOk = parsed.protocol === 'https:' || (!production && parsed.protocol === 'http:');
+  if (!httpsOk || parsed.pathname !== '/' || parsed.search !== '' || parsed.hash !== '') {
+    throw new Error('Config: PUBLIC_BASE_URL must be an origin like https://example.com (no path/query)');
+  }
+  return parsed.origin;
+}
+
+/** ADMIN_TOKEN необязателен (нет токена — админка выключена), но короткий токен не принимаем. */
+function readAdminToken(env: Record<string, string | undefined>): string {
+  const token = readString(env, 'ADMIN_TOKEN', '');
+  if (token !== '' && token.length < MIN_ADMIN_TOKEN_LEN) {
+    throw new Error(`Config: ADMIN_TOKEN must be at least ${MIN_ADMIN_TOKEN_LEN} characters (openssl rand -hex 32)`);
+  }
+  return token;
+}
+
 const LOG_LEVELS: readonly LogLevel[] = ['debug', 'info', 'warn', 'error'];
 const APP_ENVS: readonly AppEnv[] = ['development', 'test', 'production'];
 
@@ -103,6 +156,11 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   const logLevelRaw = readString(env, 'LOG_LEVEL', 'info');
   if (!LOG_LEVELS.includes(logLevelRaw as LogLevel)) {
     throw new Error(`Config: LOG_LEVEL must be one of ${LOG_LEVELS.join('|')}, got "${logLevelRaw}"`);
+  }
+
+  const playPackageId = readString(env, 'PLAY_PACKAGE_ID', 'dev.sarfex.focuspin');
+  if (!PACKAGE_ID_RE.test(playPackageId)) {
+    throw new Error(`Config: PLAY_PACKAGE_ID is not a valid Android package id, got "${playPackageId}"`);
   }
 
   return {
@@ -137,6 +195,18 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
       freshDeviceHours: readRequiredInt(env, 'LIMIT_FRESH_DEVICE_HOURS'),
       freshDeviceDay: readRequiredInt(env, 'LIMIT_FRESH_DEVICE_DAY'),
       contractFailsPerHour: readRequiredInt(env, 'LIMIT_CONTRACT_FAILS_PER_HOUR'),
+      referralDeviceDay: readRequiredInt(env, 'LIMIT_REFERRAL_DEVICE_DAY'),
+      referralIpDay: readRequiredInt(env, 'LIMIT_REFERRAL_IP_DAY'),
+      installIpDay: readRequiredInt(env, 'LIMIT_INSTALL_IP_DAY'),
+    },
+    referral: {
+      publicBaseUrl: readPublicBaseUrl(env, production),
+      playPackageId,
+      adminToken: readAdminToken(env),
+      // Срок хранения IP — решение оператора (персональные данные), поэтому без дефолта в коде.
+      ipRetentionDays: readRequiredInt(env, 'IP_RETENTION_DAYS'),
+      // Порог награды — решение владельца, поэтому тоже без дефолта в коде.
+      threshold: readRequiredInt(env, 'REFERRAL_THRESHOLD'),
     },
   };
 }

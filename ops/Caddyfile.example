@@ -7,7 +7,7 @@
 # Доверять прокси можно только если 8080 не опубликован наружу
 # (в docker-compose он слушает 127.0.0.1:8080).
 
-api.focuspin.app {
+focuspin.sarfex.dev {
 	encode zstd gzip
 
 	header {
@@ -17,6 +17,14 @@ api.focuspin.app {
 		Referrer-Policy "no-referrer"
 		-Server
 	}
+
+	# Админка (/admin/*) защищена токеном ADMIN_TOKEN самим бекендом. Дополнительно можно
+	# закрыть её по IP (раскомментируйте и подставьте свой адрес):
+	# @admin_blocked {
+	# 	path /admin/*
+	# 	not remote_ip 203.0.113.10
+	# }
+	# respond @admin_blocked 404
 
 	reverse_proxy focuspin-backend:8080
 }

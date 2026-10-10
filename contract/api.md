@@ -49,7 +49,8 @@ Content-Type: application/json
 | 400 | `invalid_request` | битый JSON/структура тела; `stream:true`; системный промпт не совпал с закреплённым v4; каркас `user`-сообщения не из приложения |
 | 401 | `unauthorized` | нет/битый заголовок `Authorization` (Bearer + device id не того формата; реестра устройств нет — годен любой корректный id) |
 | 404 | `not_found` | неизвестный путь |
-| 405 | `method_not_allowed` | не-POST на `/v1/chat/completions` |
+| 405 | `method_not_allowed` | не-POST на `/v1/chat/completions` (и неверный метод на путях рефералов) |
+| 409 | `conflict` | только админка: заявка уже обработана |
 | 413 | `payload_too_large` | тело больше лимита (`MAX_BODY_BYTES`, сам Bun рвёт соединение 413; сверхлимитные system/user-сообщения — тем же кодом) |
 | 429 | `rate_limited` | исчерпан лимит окна (заголовок `Retry-After` — через сколько секунд повторять) |
 | 429 | `busy` | исчерпана глобальная конкуренция (слишком много запросов в полёте) |
@@ -113,3 +114,54 @@ HTTP/1.1 401 Unauthorized
 
 {"error":{"code":"unauthorized","message":"..."}}
 ```
+
+## Рефералы и статистика установок
+
+Дополнительные пути для сборки `play` приложения. Оба POST — с тем же
+`Authorization: Bearer <deviceId>` и JSON-телом (≤ 4 КБ), ошибки — тот же конверт
+(`400 invalid_request`, `401`, `405`, `413`, `429 rate_limited` + `Retry-After`).
+Лимиты — дневные, на устройство и IP (env `LIMIT_REFERRAL_*`, `LIMIT_INSTALL_IP_DAY`). Email проверяется только по формату, владение не
+подтверждается.
+
+### POST /v1/referral/code
+
+```
+{"email": "user@example.com"}
+→ 200 {"code": "7K2QX9M4VBD0T3HN", "link": "https://<домен>/i/7K2QX9M4VBD0T3HN"}
+```
+
+Код — 16 символов (80 бит, алфавит Crockford base32: без I, L, O, U). Один email
+(без учёта регистра) — один код: повторный запрос возвращает тот же.
+
+### POST /v1/install
+
+```
+{"ref_code": "7K2QX9M4VBD0T3HN",   // необязательно; неизвестный/битый код не ошибка (сохраняется NULL)
+ "source": "play",                 // [a-z0-9_]{1,32}; с referrer из Google Play — play (засчитывается), без кода — например play_organic
+ "build": "play",                  // play | full
+ "app_version": "1.2.3",           // ≤ 32 символа
+ "os_version": "Android 14",       // ≤ 64 символа
+ "locale": "ru-RU"}
+→ 204
+```
+
+Идемпотентно по deviceId: первая запись побеждает, повтор игнорируется (тоже 204). Один друг
+= одно устройство: засчитывается установка с известным `ref_code`, `source=play` и `build=play`.
+Сервер сохраняет IP клиента (для проверки накрутки, срок хранения — `IP_RETENTION_DAYS`).
+
+### GET /i/:code
+
+Без авторизации. `302` на
+`https://play.google.com/store/apps/details?id=<PLAY_PACKAGE_ID>&referrer=<код>`;
+неизвестный/битый код — тот же `302`, но без `referrer`.
+
+### Админ-эндпоинты
+
+`Authorization: Bearer <ADMIN_TOKEN>`; при незаданном `ADMIN_TOKEN` все `/admin/*`
+отвечают 404, при неверном токене — 401.
+
+| Метод и путь | Что |
+|---|---|
+| `GET /admin/referrals[?qualified=1&limit=]` | `{threshold, referrals:[{code, email, created_at, counted_installs, total_installs, qualified, premium_granted_at (ISO или null), installs:[{device_id, ip, created_at, source, build, counted}]}]}`; `counted_installs` — уникальные устройства с `source=play` и `build=play`, `total_installs` — все установки по коду, `qualified = counted_installs >= REFERRAL_THRESHOLD`; `?qualified=1` — только достигшие порога (другое значение — 400); `device_id` — HMAC-хеш |
+| `POST /admin/referrals/:code/grant` | без тела → `{referral:{…как в списке…, premium_granted_at}}`: владелец помечает, что вручную выдал Premium. Идемпотентно по смыслу: повтор — 409 `conflict` (дата не меняется), неизвестный код — 404. Порог не проверяется |
+| `GET /admin/installs/stats` | `{total, with_ref_code, by_day:[{day,count}], by_source:[…], by_build:[…]}` |

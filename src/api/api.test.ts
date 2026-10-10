@@ -60,6 +60,11 @@ const BASE_ENV: Record<string, string> = {
   LIMIT_FRESH_DEVICE_HOURS: '24',
   LIMIT_FRESH_DEVICE_DAY: '1000',
   LIMIT_CONTRACT_FAILS_PER_HOUR: '1000',
+  LIMIT_REFERRAL_DEVICE_DAY: '1000',
+  LIMIT_REFERRAL_IP_DAY: '1000',
+  LIMIT_INSTALL_IP_DAY: '1000',
+  IP_RETENTION_DAYS: '90',
+  REFERRAL_THRESHOLD: '3',
 };
 
 /** Mutable canned upstream behaviour, read by the stub server fetch. */

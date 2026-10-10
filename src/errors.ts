@@ -6,6 +6,7 @@ export type ErrorCode =
   | 'payload_too_large'
   | 'not_found'
   | 'method_not_allowed'
+  | 'conflict'
   | 'rate_limited'
   | 'busy'
   | 'upstream_error'
@@ -19,6 +20,7 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
   payload_too_large: 413,
   not_found: 404,
   method_not_allowed: 405,
+  conflict: 409,
   rate_limited: 429,
   busy: 429,
   upstream_error: 502,
